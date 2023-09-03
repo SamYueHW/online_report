@@ -1,0 +1,60 @@
+.edit-store-form {
+    margin-bottom: 20px;
+  }
+  
+  .date-picker {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .submit-button {
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .related-users {
+    margin-top: 20px;
+  }
+  
+  .user-box {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .user-id {
+    margin-right: 10px;
+  }
+  
+  .user-email {
+    font-weight: bold;
+  }
+  
+  .delete-button {
+    background-color: #ff4d4f;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .delete-button:hover {
+    background-color: #ff7875;
+  }
+  

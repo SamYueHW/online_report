@@ -1,0 +1,110 @@
+.order-widget {
+    flex-grow: 1.8; /* 该类型的 widget 将占用 2 份剩余空间 */
+}
+
+.earnings-widget {
+    flex-grow: 2.5; /* 该类型的 widget 将占用 3 份剩余空间 */
+}
+
+.month_earnings-widget {
+    flex-grow: 2.5; /* 该类型的 widget 将占用 1 份剩余空间 */
+}
+
+.widget{
+    display: flex;
+    flex-shrink: 1; flex-basis: 0;
+    justify-content: space-between;
+    padding: 1vw;
+
+    -webkit-box-shadow: 2px 4px 10px 1px rgba(0,0,0,0.47);
+    box-shadow: 2px 4px 10px 1px rgba(201,201,201,0.47);
+    border-radius: 1vw;
+    height: 20px;
+    
+    
+    .left,.right{
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+
+        .title{
+            font-weight: bold;
+            font-size: 1.2vw;
+            color: #616161;
+            white-space: nowrap; /* 新增 */
+            overflow: hidden; /* 新增 */
+            text-overflow: ellipsis; /* 新增 */
+        }
+
+        .counter{
+            font-size: 1.8vw;
+            font-weight: 300;
+        }
+
+        .link{
+            width: max-content;
+            font-size: 1vw;
+            border-bottom: 1px solid gray;
+            cursor: pointer;
+        }
+        
+        .percentage{
+            display: flex;
+            align-items: center;
+            font-size: 1vw;
+            cursor: pointer;
+
+            &.positive{
+                color: green;
+            }
+            &.negative{
+                color: red;
+            }
+        }
+
+        .icon{
+            font-size: 2vw;
+            padding: 0.5vw;
+            align-self: flex-end;
+           
+            
+            cursor: default; /* 将光标样式设置为默认样式 */
+        }
+
+    }
+    .right {
+        display: flex;
+        align-items: center;
+      }
+      
+      .icon {
+        margin-right: 0.4vw;
+      }
+      
+}
+
+/* 屏幕宽度大于800px时的样式 */
+@media screen and (min-width: 800px) {
+    .title{
+        font-size: 22px;
+    }
+
+    .counter{
+        font-size: 28px;
+    }
+
+    .link, .percentage{
+        font-size: 12px;
+    }
+
+    .icon{
+        font-size: 18px;
+        padding: 5px;
+    }
+
+    .widget{
+        padding: 10px;
+        border-radius: 10px;
+        height: 170px;
+    }
+}

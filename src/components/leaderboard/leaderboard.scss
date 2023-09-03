@@ -1,0 +1,43 @@
+.leaderboard {
+    display: flex;
+    flex-direction: column; 
+    padding: 10px;
+    height: auto;
+    -webkit-box-shadow: 2px 4px 10px 1px rgba(0,0,0,0.47);
+    box-shadow: 2px 4px 10px 1px rgba(201,201,201,0.47);
+    border-radius: 10px;
+}
+
+.leaderboard .header, .leaderboard .item {
+    display: flex; 
+    justify-content: space-between; 
+    padding: 10px 0; 
+}
+
+.leaderboard .header span, .leaderboard .item span {
+    flex-basis: 0;   /* 默认宽度为 0 */
+    flex-grow: 1;    /* 均匀分配剩余空间 */
+    padding: 0 10px; /* 添加一些填充以创建间距 */
+    box-sizing: border-box; /* 使填充不增加元素的总宽度 */
+    text-align: left; /* 左对齐文本 */
+}
+
+.leaderboard .header span.rank, .leaderboard .item span.rank {
+    font-weight: bold;
+    flex: 0.5; /* 指定 rank 列的 flex 值为 0.5 */
+}
+
+.leaderboard .header span.name, .leaderboard .item span.name {
+    flex: 2; /* 为名称分配更多的空间 */
+}
+
+.leaderboard .item span.name {
+    word-wrap: break-word; 
+    font-size: 90%;
+}
+
+.leaderboard .header {
+    font-weight: bold; /* 例如，使字体加粗 */
+    background-color: #eee; /* 例如，添加背景颜色 */
+    /* 你可以根据需求进一步自定义样式 */
+}
