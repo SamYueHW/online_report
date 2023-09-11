@@ -36,15 +36,12 @@
     "scss": "^0.2.4",
     "socket.io": "^4.6.2",
     "socket.io-client": "^4.6.1",
-    "stream-http": "^3.2.0",
     "util": "^0.12.5",
     "web-vitals": "^2.1.4",
     "winston": "^3.9.0"
   },
   "scripts": {
-
     "client": "set PORT=3000 &&react-scripts start",
-
     "server": "node server/server.js",
     "build": "react-scripts build",
     "test": "react-scripts test",

@@ -2,16 +2,7 @@ import React from 'react';
 import './leaderboard.scss';
 
 const Leaderboard = ({ data }) => {
-
-    const formattedData = [];
-    // console.log(data);
-    for (let i = 0; i < data.length; i += 3) {
-      formattedData.push({
-        name: data[i],
-        qty: data[i + 1],
-        totalSales: data[i + 2],
-      });
-    }
+  // 假设data是你提供的对象数组
   
   return (
     <div className="leaderboard">
@@ -21,12 +12,12 @@ const Leaderboard = ({ data }) => {
         <span>Qty</span>
         <span>Total Sales</span>
       </div>
-      {formattedData.map((item, index) => (
+      {data.map((item, index) => (
         <div key={index} className="item">
-          <span className="rank">{index + 1}</span>
-          <span className="name">{item.name}</span>
-          <span className="qty">{item.qty}</span>
-          <span className="sales">${item.totalSales}</span>
+          <span className="rankitem">{index + 1}</span>
+          <span className="name">{item.Description}</span>
+          <span className="qty">{item.Qty}</span>
+          <span className="sales">${item.Amount.toFixed(2)}</span>
         </div>
       ))}
     </div>
@@ -34,4 +25,3 @@ const Leaderboard = ({ data }) => {
 };
 
 export default Leaderboard;
-

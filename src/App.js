@@ -9,6 +9,7 @@ import StoreHistory from './pages/storehistory/StoreHistory.jsx';
 import NotificationSetup from './pages/notification/NotificationSetup.jsx';
 import NotificationList from './pages/notification/NotificationList.jsx';
 import CheckStores from './pages/dashboard/CheckStores.jsx';
+import SalesSummary from './pages/summary/SalesSummary.jsx';  
 
 const App = () => {
   const [isAdmin, setIsAdmin] = useState(false); // 管理员身份状态
@@ -38,6 +39,7 @@ const App = () => {
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/sales-summary" element={<SalesSummary />} />
         <Route path="/notification-setup" element={isAdmin ? <NotificationSetup /> : <Navigate to="/dashboard" />} />
         <Route path="/notification-list" element={isAdmin ? <NotificationList /> : <Navigate to="/dashboard" />} />
         <Route path="/checkStores" element={<CheckStores />}/> 

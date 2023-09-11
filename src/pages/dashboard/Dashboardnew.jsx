@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import "./dashboardnew.scss";
 import Sidebar from '../../components/sidebar/Sidebarnew';
 import Adminsidebar from '../../components/sidebar/Adminsidebar';
@@ -7,14 +7,25 @@ import { useNavigate } from 'react-router-dom';
 import useGetState from '../../hooks/useGetState';
 import moment from 'moment-timezone';
 import { CircularProgress } from '@mui/material';
+import Leaderboard from '../../components/leaderboard/Leaderboard';
 
 const Dashboardnew = () => {
   const [user, setUser, getUser] = useGetState(null);
+  const [lastestUpdate, setLastestUpdate] = useState(null);
   const [isUserFetched, setIsUserFetched, getIsUserFetched] = useGetState(false);
   const [isAdmin, setIsAdmin, getIsAdmin] = useGetState(false);
 
   const [isLoading, setIsLoading, getIsLoading] = useGetState(true);
   const [dashboard_data, setDashboard_data, getDashboard_data] = useGetState(null);
+  const [leaderboardData, setleaderboardData] = useState(null);
+
+  const [paymentData, setPaymentData, getPaymentData] = useGetState(null);
+  const [cashAmount, setCashAmount] = useState(0);
+  const [nonCashPayments, setNonCashPayments] = useState([]);
+
+  const [branchPaymentData, setBranchPaymentData,getBranchPaymentData] = useGetState(null);
+  
+  const themeTogglerRef = useRef(null);  // 创建一个 ref
 
   const navigate = useNavigate();
 
@@ -22,23 +33,66 @@ const Dashboardnew = () => {
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
- 
 
     // 设置澳大利亚悉尼时区的当前日期
   const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
 
     // 当前日期状态
   const [selectedDate, setSelectedDate] = useState(australiaDate);
-  const [tselectedDate, setTSelectedDate] = useState(australiaDate);
 
-  const [comparedDate, setComparedDate] = useState('');
-  const [tcomparedDate, setTComparedDate] = useState('');
   // 判断 selectedDate 是否与当前日期相匹配
-  const isCurrentDate = selectedDate === australiaDate && tselectedDate === australiaDate;
+  const isCurrentDate = selectedDate === australiaDate;
+
+
 
   const formatDate = (dateString) => {
     return moment(new Date(dateString)).format('YYYY-MM-DD');
   };
+  function formatDateTime(isoString) {
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // 月份从0开始
+    const year = date.getFullYear();
+    
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 如果小时为0，则转换为12
+  
+    return `${day}/${month}/${year} ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  }
+  
+  const handleThemeToggle = () => {
+    document.body.classList.toggle('dark-theme-variables');
+    const themeToggler = document.querySelector('.theme-toggler');
+    if (themeToggler) {
+      themeToggler.querySelector('span:nth-child(1)').classList.toggle('active');
+      themeToggler.querySelector('span:nth-child(2)').classList.toggle('active');
+    }
+  };
+  
+  const processPaymentData = (paymentData, selectedDate) => {
+    let cash = 0;
+    const nonCash = [];
+   
+    if (paymentData && paymentData.date === selectedDate) {
+      paymentData.results.forEach(item => {
+        if (item.Description.toUpperCase() === 'CASH') {
+          cash = item.Amount;
+        } else {
+          nonCash.push(item);
+        }
+      });
+    }
+  
+    return {
+      cashAmount: cash,
+      nonCashPayments: nonCash,
+    };
+  };
+  
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -46,26 +100,13 @@ const Dashboardnew = () => {
 
   const handleSearch = async () => {
     // 验证输入
-    if (selectedDate === "" || tselectedDate === "") {
-      alert("Please make sure [Selected Date] and [TSelected Date] have been filled in!");
+    if (selectedDate === "") {
+      alert("Please make sure [Selected Date] has been filled in!");
       return;
     }
-    
-    if (new Date(selectedDate) > new Date(tselectedDate)) {
-      alert("Please enter a valid date range for Selected Dates.");
-      return;
-    }
-    
-    if (comparedDate && tcomparedDate && new Date(comparedDate) > new Date(tcomparedDate)) {
-      alert("Please enter a valid date range for Compared Dates.");
-      return;
-    }
-// 构造请求参数
+    // 构造请求参数
     const params = {
       fselected: selectedDate,
-      tselected: tselectedDate, // 你可以根据需要修改这个值
-      fcompared: comparedDate,
-      tcompared: tcomparedDate // 你可以根据需要修改这个值
     };
   
     // 发送 GET 请求
@@ -78,7 +119,6 @@ const Dashboardnew = () => {
           'authorization': `Bearer ${token}`
         }
       };
-
       
       const response = await axios.get(process.env.REACT_APP_SERVER_URL + '/searchreport', {
         ...config,
@@ -87,13 +127,22 @@ const Dashboardnew = () => {
       });
       // 处理响应结果
       if (response.status === 200) {
-        // console.log(response.data.results);
+        //console.log(response.data.results);
         setDashboard_data(response.data.results);
-     
+        setleaderboardData(response.data.itemSalesResults);
+        setPaymentData(response.data.paymentResults);
+        
+        const { cashAmount, nonCashPayments } = processPaymentData(getPaymentData(), selectedDate);
+        
+        setCashAmount(cashAmount);
+        setNonCashPayments(nonCashPayments);
+        setBranchPaymentData(response.data.branchPaymentResults);
+        console.log(response.data.branchPaymentResults);
+          
         // setUser(response.data.username);
         setIsAdmin(response.data.isAdmin);
         setIsUserFetched(true);
-        navigate('/dashboard');
+        // navigate('/dashboard');
       }
     } catch (error) {
       console.log(error);
@@ -138,27 +187,31 @@ const Dashboardnew = () => {
           }
         };
         
-        const params = {
-          fselected: selectedDate,
-          tselected: tselectedDate, // 你可以根据需要修改这个值
-          fcompared: comparedDate,
-          tcompared: tcomparedDate // 你可以根据需要修改这个值
-        };
-        const response = await axios.get(process.env.REACT_APP_SERVER_URL + '/searchreport', {
-          ...config,
-          params,
-          withCredentials: true
-        });
-
-        if (!response.data.isAdmin) {
+        const response = await axios.get(process.env.REACT_APP_SERVER_URL+'/dashboard', config); // 发送请求到服务器
+        if (response.status !== 200) {
+          handleLogout();
+          return;
+        }
+        if (!response.data.isAdmin && response.data.results) {
+          
+          // console.log(response.data.results.NetSales);
           setDashboard_data(response.data.results);
           
-          // setUser(response.data.username);
+          setleaderboardData(response.data.itemSalesResults);
+          setPaymentData(response.data.paymentResults);
+          
+          setBranchPaymentData(response.data.branchPaymentResults);
+          
+
+          
+          setUser(response.data.ClientNameResult);
+          setLastestUpdate(formatDateTime(response.data.LastestReportUpdateTimeResult));
+          
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
-          
           setIsLoading(false);
         } else {
+          
           setIsLoading(false);
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
@@ -167,11 +220,18 @@ const Dashboardnew = () => {
       } catch (error) {
         navigate('/');
         console.log(error);
+        
       }
     };
-
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const { cashAmount, nonCashPayments } = processPaymentData(getPaymentData(), selectedDate);
+    setCashAmount(cashAmount);
+    setNonCashPayments(nonCashPayments);
+  }, [getPaymentData(), selectedDate]);
+  
 
   useEffect(() => {
     if (getIsUserFetched() && !getIsAdmin() && getDashboard_data()) {
@@ -188,96 +248,161 @@ const Dashboardnew = () => {
   } 
   
 
-else if (!getIsLoading() && !getIsAdmin() && getDashboard_data() ) {
 
+else if (!getIsLoading() && !getIsAdmin() ) {
+ 
   let selectedDateData = {};
-  let comparedDateData = {};
-  
-  if (Array.isArray(getDashboard_data())) {
-    getDashboard_data().forEach(dashboardData => {
-      Object.entries(dashboardData).forEach(([dateRange, data]) => {
-        const [startDate, endDate] = dateRange.split(' - ');
-  
-        // 对比日期并获取相应数据
-        if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
-          selectedDateData = data[0];
-        }
-  
-        if (startDate === formatDate(comparedDate) && endDate === formatDate(tcomparedDate)) {
-          comparedDateData = data[0];
-        }
-      });
+
+
+  if (getDashboard_data()) {
+    Object.entries(getDashboard_data()).forEach(([date, data]) => {
+      const formattedDate = formatDate(date);
+      if (formattedDate === selectedDate) {
+        selectedDateData = data;
+      }
+      
     });
   }
-  
 
   return (
     <div className="container">
       <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} />
       <main>
         <div className="analyze-table">
-          <h1>Sales Summary</h1>
+          <h1>Dashboard</h1>
           <div className="date">
             <h2>Selected Date</h2>
             <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-            to
-            <input type="date" value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} />  
-          </div>
-          <div className="date">
-            <h2>Compared Date</h2>
-            <input type="date" value={comparedDate} onChange={(e) => setComparedDate(e.target.value)} />
-            to
-            <input type="date" value={tcomparedDate} onChange={(e) => setTComparedDate(e.target.value)} />
           </div>
           <button className="ripple" onClick={handleSearch}>Search</button>
+          <div className="daily-report">
+            <h2>Daily Report</h2>
           <table>
-          <thead>
-          <tr>
-            <th></th>
-            <th>
-              {
-                isCurrentDate ? `Current Date: ${selectedDate}` : 
-                (selectedDate === tselectedDate ? `Selected Date: ${selectedDate}` : `Selected Date Range: ${selectedDate} to ${tselectedDate}`)
-              }
-            </th>
-            {
-              (comparedDate && tcomparedDate ) && (
+            <thead>
+              <tr>
+                <th></th>
                 <th>
-                  {
-                    comparedDate === tcomparedDate ? `Compared Date: ${comparedDate}` : `Compared Date Range: ${comparedDate} to ${tcomparedDate}`
-                  }
+                  {isCurrentDate ? `Current Date: ${selectedDate}` : `Selected Date: ${selectedDate}`}
                 </th>
-              )
-            }
-          </tr>
-        </thead>
-        <tbody>
-        {
-          // 显示解析后的数据
-          Object.keys(selectedDateData).map((key, index) => (
-            <tr key={index}>
-              <td className="left-align">{addSpacesToCamelCase(key)}</td>
-              <td>{typeof selectedDateData[key] === 'number' ? selectedDateData[key].toLocaleString() : selectedDateData[key] || 0}</td>
+              </tr>
+            </thead>
+            <tbody>
               {
-                (comparedDate && tcomparedDate && Object.keys(comparedDateData).length > 0) ? 
-                <td>{typeof comparedDateData[key] === 'number' ? comparedDateData[key].toLocaleString() : comparedDateData[key] || 0}</td>: null
-              }6
-            </tr>
-          ))
-        }
-        </tbody>
-
+                Object.keys(selectedDateData).map((key, index) => (
+                  <tr key={index}>
+                    <td className="left-align">{addSpacesToCamelCase(key)}</td>
+                    <td className="custom-font-size">{typeof selectedDateData[key] === 'number' ? selectedDateData[key].toLocaleString() : selectedDateData[key] || 0}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
           </table>
-        </div> 
+          </div>
+        </div>
+        
       </main>
+      <div className = 'right'>
+        <div className='top'>
+          <button id ="menu-btn">
+            <span className='material-icons-sharp'>menu</span>
+          </button>
+          <div className='theme-toggler' onClick={handleThemeToggle}>
+            <span className='material-icons-sharp active'>light_mode</span>
+            <span className='material-icons-sharp'>dark_mode</span>
+          </div>
+          <div className='profile'>
+            <div className='info'>
+              <p>Hey, <b>{getUser()}</b></p>
+              <small className='text-muted'>Last Updates: {lastestUpdate}</small>
+            </div>  
+            <div className='profile-photo'>
+              <img src='./images/enrichIcon.jpg' />
+            </div>
+          </div>
+
+        </div>
+        <div className='rank'>
+          <h2>Sales Item Ranking</h2>
+          <div className='rank-list'>
+            {leaderboardData && leaderboardData.date === selectedDate ? (
+              <Leaderboard data={leaderboardData.results} />
+            ) : (
+              // 这里你可以放置其他的备选组件或者信息
+              <Leaderboard data={[]} />
+            )}
+            
+          </div>
+        </div>
+        <div className='payment-summary'>
+            <h2>Payment Method Summary</h2>
+            {paymentData && paymentData.date === selectedDate ? (
+              <div className='payment-list'>
+                <div className="cash-section">
+                  <div className="icon">
+                    <span className='material-icons-sharp'>payments</span>
+                  </div>
+                  <div className="cash-item">
+                    <h3>CASH</h3>
+                    <span className="cash-amount">${cashAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+                {nonCashPayments && nonCashPayments.length > 0 && (
+                    <div className="non-cash-section">
+                      <div className="icon">
+                        <span className='material-icons-sharp'>credit_cards</span>
+                      </div>
+                      <table className="non-cash-table">
+                        <tbody>
+                          {nonCashPayments.map((payment, index) => (
+                            <tr key={index}>
+                              <td><h3>{payment.Description}</h3></td>
+                              <td>${payment.Amount.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ) : (
+              <div >
+                {/* 如果 paymentData 不存在或者日期不匹配，你可以在这里放置备选内容 */}
+              </div>
+            )}
+
+        </div>
+        {Object.keys(getBranchPaymentData()).length > 0 && (
+          <div className='branch-summary'>
+            <h2>Branch Sales Summary</h2>
+            {getBranchPaymentData().results.length > 0 && getBranchPaymentData().date === selectedDate ? (
+              <div className='branch-section'>
+                <div className="icon">
+                  <span className='material-icons-sharp'>store</span>
+                </div>
+                <table className="branch-payment-table">
+                  <tbody>
+                    {getBranchPaymentData().results.map((payment, index) => (
+                      <tr key={index}>
+                        <td><h3>{payment.Description}</h3></td>
+                        <td>${payment.TotalAmount.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              
+              <div></div>
+            )}
+
+          </div>
+        )}
+        
+      </div>
+
     </div>
   );
 }
-
-
-
-
-  
 
   else if (!getIsLoading() && getIsAdmin() && getIsUserFetched() && getDashboard_data()) {
     // Define connection options
@@ -344,8 +469,9 @@ else if (!getIsLoading() && !getIsAdmin() && getDashboard_data() ) {
   
     // Render the component
     return (
-      <div className="home">
+      <div className="container">
         <Adminsidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+        <main>
         <div className="main-store">
           <div className="search-bar-container">
             <input
@@ -416,6 +542,7 @@ else if (!getIsLoading() && !getIsAdmin() && getDashboard_data() ) {
             );
           })}
         </div>
+        </main>
       </div>
     );
   }

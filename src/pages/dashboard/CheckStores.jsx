@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import Sidebar from '../../components/sidebar/Sidebarnew';
+import useGetState from '../../hooks/useGetState';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const CheckStores = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [user, setUser, getUser] = useGetState(null);
+
+
   const [stores, setStores] = useState(null);
   const navigate = useNavigate();
 
@@ -13,6 +19,45 @@ const CheckStores = () => {
       navigate('/');
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const handleStoreSelect = async (storeId) => {
+    try {
+      const token = sessionStorage.getItem('jwtToken');
+      const config = {
+        headers: {
+          'authorization': `Bearer ${token}`
+        }
+      };
+
+      const response = await axios.post(process.env.REACT_APP_SERVER_URL + '/selectStore', {storeId}, config);
+
+       if (response.status === 200 && response.data.success) {
+          if (response.data.newJwt) {
+            sessionStorage.setItem('jwtToken', response.data.newJwt);
+          }
+          const newtoken = sessionStorage.getItem('jwtToken'); // 从 sessionStorage 获取 JWT Token
+          const newconfig = {
+            headers: {
+              'authorization': `Bearer ${newtoken}`
+            }
+          };
+          
+          const response2 = await axios.post(process.env.REACT_APP_SERVER_URL+'/checkStores', {}, newconfig); // 发送请求到服务器
+        
+          if (response2.status === 200 && response2.data.success) {
+            {
+              navigate('/dashboard');
+            }
+          } 
+          else{
+            handleLogout();
+          }
+
+        } 
+    } catch (error) {
+      console.error('Error selecting the store', error);
     }
   };
 
@@ -57,19 +102,29 @@ const CheckStores = () => {
   }, []);
 
   return (
+    <div className="container">
+      <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} />
+      <main>
     <div>
       <h1>Check Stores</h1>
       {stores ? (
-        <ul>
-          {stores.map((store, index) => (
-            <li key={index}>{store}</li>
+         <ul className="check-store-list">
+          {stores.map((store) => (
+            <li key={store.StoreId}>
+              <button className="store-button" onClick={() => handleStoreSelect(store.StoreId)}>
+                {store.StoreName}
+              </button>
+            </li>
           ))}
         </ul>
       ) : (
         <p>Loading...</p>
       )}
     </div>
+    </main>
+    </div>
   );
+  
 };
 
 export default CheckStores;

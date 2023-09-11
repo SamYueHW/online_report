@@ -1,5 +1,5 @@
 
-import styles from './sidebar.scss'
+import './sidebar.scss'
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import { Link } from "react-router-dom";

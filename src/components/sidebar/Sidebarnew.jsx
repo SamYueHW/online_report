@@ -1,8 +1,10 @@
 import React from 'react';
 import styles from './GuestSidebar.module.css';
+import { useLocation } from 'react-router-dom';
 
 const Sidebarnew = ({ user, onLogout }) => {
   const counter = 6;
+  const location = useLocation();
 
   const handleLogout = () => {
     onLogout();
@@ -19,11 +21,12 @@ const Sidebarnew = ({ user, onLogout }) => {
         </div>
       </div>
       <div className={styles.sidebar}>
-        <a href="#" className={styles.active}>
+        <a href="/dashboard" className={location.pathname === "/dashboard" ? styles.active : ""}>
+        
           <span className="material-icons-sharp">grid_view</span>
           <h3>Dashboard</h3>
         </a>
-        <a href="#">
+        <a href="/sales-summary" className={location.pathname === "/sales-summary" ? styles.active : ""}>
           <span className="material-icons-sharp">insights</span>
           <h3>Analytics</h3>
         </a>

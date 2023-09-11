@@ -1,4 +1,4 @@
-:root{
+/* :root{
     --color-primary:#7380ec;
     --color-light:rgba(132, 139, 200, 0.18);
     --color-dark:#363949;
@@ -23,7 +23,7 @@
 
     --box-shadow-1:0 2rem 3rem var(--color-info-light);
 
-}
+} */
 
 
 /* 
@@ -37,9 +37,9 @@
     list-style: none;
     box-sizing: border-box;
 } */
-html{
+/* html{
     font-size: 14px;
-}
+} */
 body{
     width: 100vm;
     height: 100vh;

@@ -26,7 +26,14 @@
 
 }
 
-
+.dark-theme-variables{
+    --color-background: #181a1e;
+    --color-white: #202528;
+    --color-dark: #edeffd;
+    --color-dark-varient: #a3bdcc;
+    --color-light: rgba(0, 0, 0, 0.4);
+    --box-shadow: 0 2rem 3rem var(--color-light);
+}
 
 *{
     margin: 0;
@@ -39,7 +46,7 @@
     box-sizing: border-box;
 }
 html{
-    font-size: 14px;
+    font-size: 0.95vw;
 }
 body{
     width: 100vm;
@@ -56,8 +63,12 @@ body{
     width:96%;
     margin: 0 auto;
     gap:1.8rem;
-    grid-template-columns: 14rem auto 23rem;
+    grid-template-columns: 46% auto 35%;
 }
+.right {
+    grid-column: 3;  /* 这会让 .right 出现在第三列 */
+}
+
 a{
     color:var(--color-dark);
 }
@@ -68,21 +79,27 @@ img{
 h1{
     font-weight: 800;
     font-size: 1.8rem;
+    color: var(--color-dark);
 }
 h2{
     font-size: 1.4rem;
+    color: var(--color-dark);
 }
 h3{
     font-size: 0.87rem;
+    color: var(--color-dark);
 }
 h4{
     font-size: 0.8rem;
+    color: var(--color-dark);
 }
 h5{
     font-size: 0.77rem;
+    color: var(--color-dark);
 }
 small{
     font-size: 0.75rem;
+    color: var(--color-dark);
 }
 .text-muted{
     color: var(--color-info-dark);
@@ -110,6 +127,9 @@ b{
 
 aside{
     height: 100vh;
+    position: fixed;  /* 设定为固定位置 */
+    top: 0;           /* 距离屏幕顶部 0 像素 */
+    left: 0;          /* 距离屏幕左侧 0 像素 */
 }
 
 aside .top{ 
@@ -157,7 +177,7 @@ aside .sidebar a{
 }
 
 aside .sidebar a span{
-    font-size: 1.6rem;
+    font-size: 1.6vw;
     transition: all 0.3s ease;
 }
 /* aside .sidebar a:last-child{
@@ -194,11 +214,15 @@ aside .sidebar .message-count{
     background: var(--color-danger);
     color: var(--color-white);
     padding: 2px 10px;
-    font-size:11px;
+    font-size:11vw;
     border-radius: var(--border-radius-1);
 }
 main{
     margin-top: 2.4rem;
+    margin-left: 15rem;
+    width: 80%;  /* 或者使用一个固定的宽度，比如 800px */
+    margin-bottom: 2rem;
+
 }
 main .date{
     display: inline-block;
@@ -211,7 +235,7 @@ main .date{
 main .date input[type="date"]{
     background: transparent;
     color: var(--color-dark);
-    font-size: 1.2rem ;
+    font-size: 1vw ;
 }
 /* main .search_btn{
    
@@ -239,7 +263,24 @@ main .search_btn:hover, .search_btn:focus, .search_btn:active{
     transform: scale(1.1);
 
 } */
+/*=====check store button=====*/
+.check-store-list {
+    margin-top: 3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;  /* 按钮之间的间距 */
+  }
+  
+  .store-button {
+    white-space: nowrap;  /* 防止按钮内文字换行 */
+  }
+  
+// .store-button {
 
+//     display: block;
+//     margin-bottom: 1rem;  /* Optional: 添加一些底部边距 */
+//   }
+  
 /* Ripple effect */
 .ripple {
     background-position: center;
@@ -259,7 +300,7 @@ button {
     font-weight: bold;
     border-radius: 2px;
     padding: 12px 18px;
-    font-size: 16px;
+    font-size: 1vw;
     text-transform: uppercase;
     cursor: pointer;
     color: white;
@@ -268,16 +309,16 @@ button {
     outline: none;
     border-radius: var(--border-radius-1);
 }
-  
 
-main .analyze-table{
+
+main .daily-report{
     margin-top: 2rem;
 }
 
-main .analyze-table h2{
+main .daily-report h2{
     margin-bottom: 0.8em;
 }
-main .analyze-table table{
+main .daily-report table{
     margin-top: 1.4rem;
     background: var(--color-white);
     width: 100%;
@@ -288,7 +329,7 @@ main .analyze-table table{
     transition: all 0.3s ease;
 }
 
-main .analyze-table table:hover{
+main .daily-report table:hover{
     box-shadow: none;
 }
 
@@ -296,7 +337,6 @@ main table tbody td{
     height: 2.8rem;
     border-bottom: 1px solid var(--color-light);
     color: var(--color-dark-varient);
-  
 }
 table {
     border-collapse: separate; /* 使用 separate 模式，允许设置边距 */
@@ -304,7 +344,7 @@ table {
 }
 
 main table td:first-child {
-    font-size: 1.25rem;
+    font-size: 1vw;
     font-weight: bold;
 }
 table tbody tr:first-child td:first-child,
@@ -312,10 +352,14 @@ table tbody tr:first-child td:first-child,
     
     color: rgba(236, 157, 39, 0.818); 
 }
+
 table tbody tr:nth-child(3) td:first-child,
   table tbody tr:nth-child(4) td:first-child {
     color: var(--color-danger);
   }
+.custom-font-size {
+    font-size: 1.05rem;  /* 你可以设置任何你想要的字体大小 */
+}
 
 main table thead th{
     text-align: centre;
@@ -330,34 +374,297 @@ main table tbody tr:last-child td{
 main table tbody tr:hover{
     background: var(--color-light);
 }
+
+
 main table tbody td.left-align {
     text-align: left;
     padding-left: 4rem;
 }
 
-/* Media Queries */
-/* @media screen and (max-width: 1200px){
-    .container{
-        width: 94%;
-        grid-template-columns: 7rem auto 23rem;
-    }
-    aside .logo h2{
-        display: none;
-    }
-    aside .sidebar h3{
-        display: none;
-    }
-    aside .sidebar a{
-        width: 5.6rem;
-    }
-    aside .sidebar a:last-child{
-        position: relative;
-        margin-top: 1.8rem;
-    }
+
+.right{
+    margin-top: 1.4rem;
+    
 }
-@media screen and (max-width:768px){
-    .container{
-        width:100%;
+
+.right .top{
+    display: flex;
+    justify-content: end;
+    gap: 2rem;
+   
+}
+.right .top button{
+    display: none;
+}
+
+.right .theme-toggler{
+    background: var(--color-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height:  1.6rem;
+    width: 4.2rem; 
+    cursor: pointer;
+    border-radius: var(--border-radius-1);
+}
+
+.right .theme-toggler span{
+    font-size: 1.2rem;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.right .theme-toggler span.active{
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-radius: var(--border-radius-1);
+}
+
+.right .top .profile{
+    display: flex;
+    gap: 2rem;
+    text-align: right;  
+}
+.profile-photo img {
+    margin-top: 0.3rem;
+    width: 2.2rem;  /* 宽度 */
+    height: 2.2rem; /* 高度 */
+    border-radius: var(--border-radius-1); /* 圆角 */
+}
+
+/*==============Rank=================*/
+.right .rank{
+    
+    margin-top: 3rem;
+}
+.right .rank h2{
+    margin-bottom: 0.8em;
+}
+
+
+/*======payment-summary========*/
+.right .payment-summary{
+    margin-top: 3rem;
+}
+.right .payment-summary .cash-section{
+    background: var(--color-white);
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+
+    margin-bottom: 0.7rem;
+    margin-top: 0.7rem;
+    padding: 1.4rem var(--card-padding);
+    border-radius: var(--border-radius-3);
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+}
+.right .payment-summary .non-cash-section{
+    background: var(--color-white);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    margin-bottom: 0.7rem;
+    margin-top: 0.7rem;
+    padding: 1.4rem var(--card-padding);
+    border-radius: var(--border-radius-3);
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+}
+
+.right .payment-summary .cash-section:hover{
+    box-shadow: none;
+}
+.right .payment-summary .non-cash-section:hover{
+    box-shadow: none;
+}
+
+.cash-section .icon{
+    padding: 0.6rem;
+    color: var(--color-white);
+    border-radius:50%;
+    background: var(--color-primary);
+    display: flex;
+}
+/* 确保 .cash-item 是一个 flex 容器 */
+.cash-section .cash-item {
+    display: flex;
+    align-items: center;
+    gap: 3rem;  /* 如果需要，可以设置间距 */
+    margin-left: 1rem;  /* 为了与图标保持一致，我们添加了一些左边距 */
+  }
+  
+  /* 阻止换行 */
+  .cash-section .cash-item h3, .cash-section .cash-item .cash-amount {
+    white-space: nowrap;
+  }
+  
+.non-cash-section .icon{
+    padding: 0.65rem;
+    color: var(--color-white);
+    border-radius:50%;
+    background: var(--color-warning);
+    display: flex;
+    width: 2.7rem;
+}
+
+/* 为表格添加样式 */
+.non-cash-section table {
+    border-collapse: separate;
+    border-spacing: 1rem 1rem;  /* 添加列间隙 */
+  }
+
+/* 移除特定颜色 */
+.non-cash-section table tbody tr:first-child td:first-child,
+.non-cash-section tbody tr:nth-child(2) td:first-child,
+.non-cash-section tbody tr:nth-child(3) td:first-child,
+.non-cash-section tbody tr:nth-child(4) td:first-child {
+color: inherit;  /* 重置颜色 */
+}
+  
+/* 使 cash amount 右对齐 */
+.cash-section .cash-item .cash-amount {
+    text-align: right;
+    padding-left: 10.3rem;
+    // margin-left: auto;  /* 如果在 flex 容器中，这会推动它向右边 */
+  }
+ 
+  /* 使表格第二列右对齐 */
+.non-cash-section table tbody td:last-child {
+    padding-left: 7rem;
+    text-align: right;
+}
+
+/*====BranchSales====*/
+.right .branch-summary{
+    margin-top: 3rem;
+}
+.right .branch-summary .branch-section{
+    background: var(--color-white);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+    margin-top: 0.7rem;
+    padding: 1.4rem var(--card-padding);
+    border-radius: var(--border-radius-3);
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+}
+.right .branch-summary .branch-section:hover{
+    box-shadow: none;
+}
+.branch-section .icon{
+    padding: 0.65rem;
+    color: var(--color-white);
+    border-radius:50%;
+    background: var(--color-danger);
+    display: flex;
+    width: 2.7rem;
+}
+.branch-section table tbody td:last-child {
+    padding-left: 6.5rem;
+    text-align: right;
+}
+
+/* 移除特定颜色 */
+.branch-section  table tbody tr:first-child td:first-child,
+.branch-section  tbody tr:nth-child(2) td:first-child,
+.branch-section  tbody tr:nth-child(3) td:first-child,
+.branch-section  tbody tr:nth-child(4) td:first-child {
+color: inherit;  /* 重置颜色 */
+}
+/* 为表格添加样式 */
+.branch-section table {
+    border-collapse: separate;
+    border-spacing: 1rem 1rem;  /* 添加列间隙 */
+}
+
+  
+  @media (max-width: 768px) {
+    html {
+      font-size: 14px;  /* 当视口宽度小于或等于 600px 时，字体大小不会小于 12px */
     }
-} */
+  }
+  
+//   /* 设置最大字体大小 */
+//   @media (min-width: 1200px) {
+//     p {
+//       font-size: 24px;  /* 当视口宽度大于或等于 1200px 时，字体大小不会大于 24px */
+//     }
+//   }
+
+// /* Media Queries */
+//  @media screen and (max-width: 1200px){
+//     .container{
+//         width: 94%;
+//         grid-template-columns: 7rem auto 23rem;
+//     }
+//     aside .logo h2{
+//         display: none;
+//     }
+//     aside .sidebar h3{
+//         display: none;
+//     }
+//     aside .sidebar a{
+//         width: 5.6rem;
+//     }
+//     aside .sidebar a:last-child{
+//         position: relative;
+//         margin-top: 1.8rem;
+//     }
+
+//     main .daily-report{
+//         width: 94%;
+//         position: absolute;
+//         left: 50%;
+//         transform: translateX(-50%);
+//         margin: 2rem 0 0 8.8rem;
+//     }
+//     main .daily-report table{
+//         width: 84%;
+//     }
+  
+// }
+// @media screen and (max-width:768px){
+//     .container{
+//         width:100%;
+//     }
+//     aside{
+//         position:fixed;
+//         left:0;
+//         background: var(--color-white);
+//         width: 18rem;
+//         z-index: 3;
+//         box-shadow: 1rem 3rem 4rem var(--color-light);
+//         height: 100vh;
+//         padding-right: var(--card-padding);
+//     }
+//     aside .logo{
+//         margin-left: 1rem;
+//     }
+//     aside .logo h2{
+//         display: inline;
+//     }
+//     aside .sidebar h3{
+//         display: inline;
+//     }
+//     aside .sidebar a{
+//         width: 100%;
+//         height: 3.4rem;
+//     }
+//     aside .sidebar a:last-child{
+//         position: absolute;
+//         bottom: 5rem;
+//     }
+//     aside .close{
+//         display:inline-block;
+//         cursor: pointer;
+
+//     }
+// } 
     
