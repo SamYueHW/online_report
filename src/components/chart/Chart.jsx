@@ -16,7 +16,7 @@ const Chart = ({ aspect, title, data }) => {
     const option = {
       toolbox: {
         feature: {
-          saveAsImage: { name: 'Category Analyze' }
+          saveAsImage: { name: 'Payment Analyze' }
         }
       },
       tooltip: {
@@ -65,7 +65,7 @@ const Chart = ({ aspect, title, data }) => {
           name: 'Category Sales',
           type: 'pie',
           radius: '61%',
-          center: ['40%', '50%'],
+          center: ['50%', '50%'],
           data: data,
           emphasis: {
             itemStyle: {
@@ -101,7 +101,7 @@ const Chart = ({ aspect, title, data }) => {
   return (
     <div className="chart">
       <div className="title">{title}</div>
-      <div ref={chartRef} style={{ width: "100%", height: "500px" }} />
+      <div ref={chartRef} style={{ width: "100%", height: "25rem" }} />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import moment from 'moment-timezone';
 import { CircularProgress } from '@mui/material';
 
 import Dropdown from '../../components/dropdown/Dropdown';
+import Mchart from '../../components/mchart/Mchart';
 
 const SalesSummary = () => {
   const [user, setUser, getUser] = useGetState(null);
@@ -17,26 +18,35 @@ const SalesSummary = () => {
 
   const [isLoading, setIsLoading, getIsLoading] = useGetState(true);
   const [dashboard_data, setDashboard_data, getDashboard_data] = useGetState(null);
+  const [NetSalesByDate, setNetSalesByDate] = useState({xAxisData1: [],yAxisData1: [],xAxisData2: [],yAxisData2: [],});
 
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [selectedTotalNetSales, setSelectedTotalNetSales] = useState(0);
+  const [comparedTotalNetSales, setComparedTotalNetSales] = useState(0);
+
+  const [selectedTotalNetSalesDateRange, setSelectedTotalNetSalesDateRange] = useState(null);
+  const [comparedTotalNetSalesDateRange, setComparedTotalNetSalesDateRange] = useState(null);
+
  
 
     // 设置澳大利亚悉尼时区的当前日期
   const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
-  const dateOptions = ["Daily", "Weekly", "Monthly"];
+  const dateOptions = ["Daily", "Weekly", "Monthly", "Yearly"];
 
-  const [dateType, setDateType] = useState("Daily");
+  const [dateType, setDateType] = useState("Weekly");
 
 
     // 当前日期状态
   const [selectedDate, setSelectedDate] = useState(australiaDate);
   const [tselectedDate, setTSelectedDate] = useState(australiaDate);
-
   const [comparedDate, setComparedDate] = useState('');
   const [tcomparedDate, setTComparedDate] = useState('');
+  
+
   // 判断 selectedDate 是否与当前日期相匹配
-  const isCurrentDate = selectedDate === australiaDate && tselectedDate === australiaDate;
+  const isCurrentDate =selectedDate === australiaDate && tselectedDate === australiaDate;
 
   const formatDate = (dateString) => {
     return moment(new Date(dateString)).format('YYYY-MM-DD');
@@ -45,6 +55,192 @@ const SalesSummary = () => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+    
+const processDashboardData = (dashboardData) => {
+  let selectedTotalNetSales = 0;
+  let comparedTotalNetSales = 0;
+
+  let x1Data = [];
+  let y1Data = [];
+  let x2Data = [];
+  let y2Data = [];
+  try{
+    if (Array.isArray(dashboardData)) {
+    dashboardData.forEach(dashboardData => {
+      Object.entries(dashboardData).forEach(([dateRange, data]) => {
+        if (Array.isArray(data)) {
+        const [startDate, endDate] = dateRange.split(' - ');
+  
+        // 对比日期并获取相应数据
+        if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
+          setSelectedTotalNetSalesDateRange({ startDate, endDate });
+          // 遍历 data 数组，累加 TotalNetSales
+          data.forEach(({ TotalNetSales }) => {
+            selectedTotalNetSales += TotalNetSales;
+          });
+          const totalNetSalesMap = new Map();
+          let currentDate = new Date(startDate);
+          const endDateObject = new Date(endDate);
+
+          while (currentDate <= endDateObject) {
+            const dateKey = currentDate.toLocaleDateString();
+            totalNetSalesMap.set(dateKey, 0);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          // 遍历 data 数组，更新 TotalNetSales
+          data.forEach(({ TotalNetSales, Date: SalesDate }) => {
+            const dateKey = new Date(SalesDate).toLocaleDateString();
+            totalNetSalesMap.set(dateKey, TotalNetSales);
+          });          
+          if (dateType==="Weekly"){
+            for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+              const dateParts = SalesDate.split('/');
+              const formattedDate = `${dateParts[1]}/${dateParts[0]}/${dateParts[2]}`;
+              
+              x1Data.push(formattedDate); // 使用格式化后的日期
+              y1Data.push(parseFloat(sales.toFixed(2)));
+            }
+          }
+          else if (dateType === "Yearly") {
+            const monthlySales = new Map();
+            let year = null;
+          
+            for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+              const dateObject = new Date(SalesDate);
+              year = dateObject.getFullYear();  // 获取年份
+              const month = dateObject.getMonth(); // 获取月份（0 = 一月, 1 = 二月, ...）
+          
+              // 如果这个月份还没有添加到 monthlySales 中，则初始化为0
+              if (!monthlySales.has(month)) {
+                monthlySales.set(month, 0);
+              }
+          
+              // 累加这个月的销售额
+              monthlySales.set(month, monthlySales.get(month) + sales);
+            }
+          
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          
+            // 将每个月的累计销售额添加到 x1Data 和 y1Data 中
+            for (const [month, sales] of monthlySales.entries()) {
+              x1Data.push(`${monthNames[month]} ${year}`);  // 在这里加上了年份
+              y1Data.push(parseFloat(sales.toFixed(2)));
+            }
+          }
+
+        };
+        if (startDate === formatDate(comparedDate) && endDate === formatDate(tcomparedDate)) {
+          setComparedTotalNetSalesDateRange({ startDate, endDate });
+           // 遍历 data 数组，累加 TotalNetSales
+           data.forEach(({ TotalNetSales }) => {
+            comparedTotalNetSales += TotalNetSales;
+          });
+          const totalNetSalesMap = new Map();
+          let currentDate = new Date(startDate);
+          const endDateObject = new Date(endDate);
+
+          while (currentDate <= endDateObject) {
+            const dateKey = currentDate.toLocaleDateString();
+            totalNetSalesMap.set(dateKey, 0);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          // 遍历 data 数组，更新 TotalNetSales
+          data.forEach(({ TotalNetSales, Date: SalesDate }) => {
+            const dateKey = new Date(SalesDate).toLocaleDateString();
+            totalNetSalesMap.set(dateKey, TotalNetSales);
+          });          
+
+      
+          
+          if (dateType==="Weekly"){
+            for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+              
+                const dateParts = SalesDate.split('/');
+                const formattedDate = `${dateParts[1]}/${dateParts[0]}/${dateParts[2]}`;
+                
+                x2Data.push(formattedDate); // 使用格式化后的日期
+                y2Data.push(parseFloat(sales.toFixed(2)));
+            }
+            }
+          //  else if (dateType === "Monthly") {
+          //   let weeklySales = 0;
+          //   let weekStart = null;
+          //   let weekEnd = null;
+          //   let dayCounter = 0;
+          
+          //   for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+          //     const dateObject = new Date(SalesDate);
+          //     const dayOfWeek = dateObject.getDay(); // 获取星期几（0 = 星期日, 1 = 星期一, ...）
+          
+          //     // 如果是周一，设置 weekStart
+          //     if (dayOfWeek === 1) {
+          //       weekStart = SalesDate;
+          //     }
+          //     // 累加本周的销售额
+          //     weeklySales += sales;
+          
+          //     // 如果是周日，设置 weekEnd 并保存数据
+          //     if (dayOfWeek === 0) {
+          //       weekEnd = SalesDate;
+          //       x1Data.push(`${weekStart} - ${weekEnd}`);
+          //       y1Data.push(weeklySales);
+          //       // 重置相关变量
+          //       weeklySales = 0;
+          //       weekStart = null;
+          //       weekEnd = null;
+          //     }
+          //     dayCounter++;
+          
+          //     // 如果到达最后一天但还没有到周日
+          //     if (dayCounter === totalNetSalesMap.size && dayOfWeek !== 0) {
+          //       weekEnd = SalesDate;
+          //       x1Data.push(`${weekStart} - ${weekEnd}`);
+          //       y1Data.push(weeklySales);
+          //     }
+          //   }
+          // }
+          else if (dateType === "Yearly") {
+            const monthlySales = new Map();
+            let year = null;
+          
+            for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+              const dateObject = new Date(SalesDate);
+              year = dateObject.getFullYear();  // 获取年份
+              const month = dateObject.getMonth(); // 获取月份（0 = 一月, 1 = 二月, ...）
+          
+              // 如果这个月份还没有添加到 monthlySales 中，则初始化为0
+              if (!monthlySales.has(month)) {
+                monthlySales.set(month, 0);
+              }
+          
+              // 累加这个月的销售额
+              monthlySales.set(month, monthlySales.get(month) + sales);
+            }
+          
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          
+            // 将每个月的累计销售额添加到 x1Data 和 y1Data 中
+            for (const [month, sales] of monthlySales.entries()) {
+              x2Data.push(`${monthNames[month]} ${year}`);  // 在这里加上了年份
+              y2Data.push(parseFloat(sales.toFixed(2)));
+            }
+          }
+        }}
+       
+      });
+    });
+    setSelectedTotalNetSales(selectedTotalNetSales);
+    setComparedTotalNetSales(comparedTotalNetSales);
+
+    setNetSalesByDate({xAxisData1: x1Data,yAxisData1: y1Data,xAxisData2: x2Data,yAxisData2: y2Data,});
+
+  }}
+  catch (error) {
+    console.log(error);
+    navigate('/');
+  }
+}
 
   const handleSearch = async () => {
     // 验证输入
@@ -68,8 +264,8 @@ const SalesSummary = () => {
       tselected: tselectedDate, // 你可以根据需要修改这个值
       fcompared: comparedDate,
       tcompared: tcomparedDate // 你可以根据需要修改这个值
-    };
-  
+    }
+
     // 发送 GET 请求
     try {
       const token = sessionStorage.getItem('jwtToken'); // 从 sessionStorage 获取 JWT Token
@@ -78,8 +274,6 @@ const SalesSummary = () => {
           'authorization': `Bearer ${token}`
         }
       };
-
-      
       const response = await axios.get(process.env.REACT_APP_SERVER_URL + '/searchSalesSummary', {
         ...config,
         params,
@@ -89,7 +283,8 @@ const SalesSummary = () => {
       if (response.status === 200) {
         // console.log(response.data.results);
         setDashboard_data(response.data.results);
-        console.log(response.data.results);
+        
+        processDashboardData(response.data.results);
      
         // setUser(response.data.username);
         setIsAdmin(response.data.isAdmin);
@@ -101,7 +296,6 @@ const SalesSummary = () => {
       console.log(error);
     }
   };
-
 
   const handleLogout = async () => {
     try {
@@ -127,6 +321,7 @@ const SalesSummary = () => {
   };
   
 
+
   const handleSelectedDateChange = (selectedDate) => {
     if (dateType === "Daily") {
       setSelectedDate(selectedDate);
@@ -144,12 +339,7 @@ const SalesSummary = () => {
       setSelectedDate(startOfMonth);
       setTSelectedDate(endOfMonth);
     }
-    // else if (dateType === "Quarterly") {
-    //   const startOfQuarter = moment(selectedDate).startOf('quarter').format('YYYY-MM-DD');
-    //   const endOfQuarter = moment(selectedDate).endOf('quarter').format('YYYY-MM-DD');
-    //   setSelectedDate(startOfQuarter);
-    //   setTSelectedDate(endOfQuarter);
-    // }
+
     else if (dateType === "Yearly") {
       const startOfYear = moment(selectedDate).startOf('year').format('YYYY-MM-DD');
       const endOfYear = moment(selectedDate).endOf('year').format('YYYY-MM-DD');
@@ -160,69 +350,56 @@ const SalesSummary = () => {
   
   
   const handleComparedDateChange = (selectedDate) => {
-    if (!selectedDate) {
-      setComparedDate('');
-      setTComparedDate('');
-      return;
-    }
+    let comparedStartDate = "";
+    let comparedEndDate = "";
   
     if (dateType === "Daily") {
-      setComparedDate(selectedDate);
-      setTComparedDate(selectedDate);
-    }
+      comparedStartDate = moment(selectedDate).subtract(1, 'days').format('YYYY-MM-DD');
+      comparedEndDate = comparedStartDate;
+    } 
     else if (dateType === "Weekly") {
-      const startOfWeek = moment(selectedDate).startOf('isoWeek').format('YYYY-MM-DD');
-      const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
-      setComparedDate(startOfWeek);
-      setTComparedDate(endOfWeek);
+      comparedStartDate = moment(selectedDate).subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+      comparedEndDate = moment(selectedDate).subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
     } 
     else if (dateType === "Monthly") {
-      const startOfMonth = moment(selectedDate).startOf('month').format('YYYY-MM-DD');
-      const endOfMonth = moment(selectedDate).endOf('month').format('YYYY-MM-DD');
-      setComparedDate(startOfMonth);
-      setTComparedDate(endOfMonth);
-      
+      comparedStartDate = moment(selectedDate).subtract(1, 'months').startOf('month').format('YYYY-MM-DD');
+      comparedEndDate = moment(selectedDate).subtract(1, 'months').endOf('month').format('YYYY-MM-DD');
     }
-    // else if (dateType === "Quarterly") {
-    //   const startOfQuarter = moment(selectedDate).startOf('quarter').format('YYYY-MM-DD');
-    //   const endOfQuarter = moment(selectedDate).endOf('quarter').format('YYYY-MM-DD');
-    //   setComparedDate(startOfQuarter);
-    //   setTComparedDate(endOfQuarter);
-    // }
     else if (dateType === "Yearly") {
-      const startOfYear = moment(selectedDate).startOf('year').format('YYYY-MM-DD');
-      const endOfYear = moment(selectedDate).endOf('year').format('YYYY-MM-DD');
-      setComparedDate(startOfYear);
-      setTComparedDate(endOfYear);
+      comparedStartDate = moment(selectedDate).subtract(1, 'years').startOf('year').format('YYYY-MM-DD');
+      comparedEndDate = moment(selectedDate).subtract(1, 'years').endOf('year').format('YYYY-MM-DD');
     }
+    setComparedDate(comparedStartDate);
+    setTComparedDate(comparedEndDate);
   };
+
+
+  
   useEffect(() => {
     // 这里是初始化日期的逻辑
-  
+    processDashboardData([]);
 
     // 根据 dateType 来初始化日期
     if (dateType === "Daily") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange("");
+      handleComparedDateChange();
 
 
     } 
     else if (dateType === "Weekly") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange("");
+      handleComparedDateChange();
 
     } 
     else if (dateType === "Monthly") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange("");
+      handleComparedDateChange();
 
     }
-    // else if (dateType === "Quarterly") {
-    //   handleSelectedDateChange(australiaDate);
-    // }
+
     else if (dateType === "Yearly") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange("");
+      handleComparedDateChange();
 
     }
     
@@ -243,10 +420,12 @@ const SalesSummary = () => {
         };
         
         const params = {
-          fselected: selectedDate,
-          tselected: tselectedDate, // 你可以根据需要修改这个值
-          fcompared: comparedDate,
-          tcompared: tcomparedDate // 你可以根据需要修改这个值
+          fselected: moment.tz(australiaDate, 'Australia/Sydney').startOf('isoWeek').format('YYYY-MM-DD'),
+          tselected: moment.tz(australiaDate, 'Australia/Sydney').endOf('isoWeek').format('YYYY-MM-DD'), // 你可以根据需要修改这个值
+          fcompared: moment.tz(australiaDate, 'Australia/Sydney').subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD'),
+          tcompared: moment.tz(australiaDate, 'Australia/Sydney').subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD') // 你可以根据需要修改这个值
+        
+         
         };
         const response = await axios.get(process.env.REACT_APP_SERVER_URL + '/searchSalesSummary', {
           ...config,
@@ -255,8 +434,9 @@ const SalesSummary = () => {
         });
 
         if (!response.data.isAdmin) {
-          console.log(response.data.results);
+          
           setDashboard_data(response.data.results);
+          processDashboardData(response.data.results);
           
           // setUser(response.data.username);
           setIsAdmin(response.data.isAdmin);
@@ -270,7 +450,7 @@ const SalesSummary = () => {
           setDashboard_data(response.data.data);
         }
       } catch (error) {
-        navigate('/');
+        // navigate('/');
         console.log(error);
       }
     };
@@ -291,83 +471,8 @@ const SalesSummary = () => {
       </div>
     );
   } 
-  
 
-else if (!getIsLoading() && !getIsAdmin() && getDashboard_data() ) {
 
-  let selectedTotalNetSales = 0;
-  let comparedTotalNetSales = 0;
-   // 转换为数组并返回
-  const selecteddatesList = [];
-  const selectedtotalNetSalesList = [];  
-  const compareddatesList = [];
-  const comparedtotalNetSalesList = [];
-  try{
-    if (Array.isArray(getDashboard_data())) {
-    getDashboard_data().forEach(dashboardData => {
-      Object.entries(dashboardData).forEach(([dateRange, data]) => {
-        if (Array.isArray(data)) {
-        const [startDate, endDate] = dateRange.split(' - ');
-  
-        // 对比日期并获取相应数据
-        if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
-          // 遍历 data 数组，累加 TotalNetSales
-          data.forEach(({ TotalNetSales }) => {
-            selectedTotalNetSales += TotalNetSales;
-          });
-          const totalNetSalesMap = new Map();
-          let currentDate = new Date(startDate);
-          const endDateObject = new Date(endDate);
-
-          while (currentDate <= endDateObject) {
-            const dateKey = currentDate.toLocaleDateString();
-            totalNetSalesMap.set(dateKey, 0);
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-          // 遍历 data 数组，更新 TotalNetSales
-          data.forEach(({ TotalNetSales, Date: SalesDate }) => {
-            const dateKey = new Date(SalesDate).toLocaleDateString();
-            totalNetSalesMap.set(dateKey, TotalNetSales);
-          });          
-
-          for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
-            selecteddatesList.push(SalesDate);
-            selectedtotalNetSalesList.push(sales);
-          }
-        };
-        if (startDate === formatDate(comparedDate) && endDate === formatDate(tcomparedDate)) {
-           // 遍历 data 数组，累加 TotalNetSales
-           data.forEach(({ TotalNetSales }) => {
-            comparedTotalNetSales += TotalNetSales;
-          });
-          const totalNetSalesMap = new Map();
-          let currentDate = new Date(startDate);
-          const endDateObject = new Date(endDate);
-
-          while (currentDate <= endDateObject) {
-            const dateKey = currentDate.toLocaleDateString();
-            totalNetSalesMap.set(dateKey, 0);
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-          // 遍历 data 数组，更新 TotalNetSales
-          data.forEach(({ TotalNetSales, Date: SalesDate }) => {
-            const dateKey = new Date(SalesDate).toLocaleDateString();
-            totalNetSalesMap.set(dateKey, TotalNetSales);
-          });          
-
-          for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
-            compareddatesList.push(SalesDate);
-            comparedtotalNetSalesList.push(sales);
-          }
-        }}
-      });
-    });
-
-  }}
-  catch (error) {
-    console.log(error);
-    navigate('/checkStores');
-  }
   
 
   return (
@@ -390,7 +495,6 @@ else if (!getIsLoading() && !getIsAdmin() && getDashboard_data() ) {
 
           <div className="date">
             <h2>Compared Date</h2>
-
             <input type="date" value={comparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
             {dateType !== "Daily" && (
               <>
@@ -401,49 +505,100 @@ else if (!getIsLoading() && !getIsAdmin() && getDashboard_data() ) {
           </div>
 
           <button className="ripple" onClick={handleSearch}>Search</button>
+          <div className='daily-report'>
           <table>
           <thead>
           <tr>
             <th></th>
             <th>
               {
-              isCurrentDate ? 
-              `Current Date: ${moment(selectedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')}` : 
-              (selectedDate === tselectedDate ? 
-              `Selected Date: ${moment(selectedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')}` : 
-              `Selected Date Range: ${moment(selectedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')} to ${moment(tselectedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')}`)
-            }
-          </th>
+                isCurrentDate ? 
+                <>
+                  Current Date: <br />
+                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                </> : 
+                (selectedDate === tselectedDate ? 
+                <>
+                  Selected Date: <br />
+                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                </> : 
+                <>
+                  Selected Date Range: <br />
+                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tselectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                </>)
+              }
+            </th>
+
           {
             (comparedDate && tcomparedDate ) && (
               <th>
                 {
                   comparedDate === tcomparedDate ? 
-                  `Compared Date: ${moment(comparedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')}` : 
-                  `Compared Date Range: ${moment(comparedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')} to ${moment(tcomparedDate, 'YYYY-MM-DD').format('DD-MM-YYYY')}`
+                  <>
+                    Compared Date: <br />
+                    {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                  </> : 
+                  <>
+                    Compared Date Range: <br />
+                    {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tcomparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                  </>
                 }
               </th>
+
             )
           }
 
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td className="left-align">Total Net Sales</td>
-            <td>{typeof selectedTotalNetSales === 'number' ? selectedTotalNetSales.toLocaleString() : selectedTotalNetSales || 0}</td>
-            {
-              (comparedDate && tcomparedDate ) ? 
-              <td>{typeof comparedTotalNetSales === 'number' ? comparedTotalNetSales.toLocaleString() : comparedTotalNetSales|| 0}</td> : null
-            }
-          </tr>
+        {
+  (
+    selectedTotalNetSalesDateRange && 
+    selectedTotalNetSalesDateRange.startDate === formatDate(selectedDate) && 
+    selectedTotalNetSalesDateRange.endDate === formatDate(tselectedDate) && 
+    typeof selectedTotalNetSales === 'number'
+  ) && (
+    <tr>
+      <td className="left-align">Total Net Sales</td>
+      <td>{selectedTotalNetSales.toLocaleString()}</td>
+      {
+        (
+          comparedTotalNetSalesDateRange && 
+          comparedTotalNetSalesDateRange.startDate === formatDate(comparedDate) &&
+          comparedTotalNetSalesDateRange.endDate === formatDate(tcomparedDate) && comparedDate && tcomparedDate &&
+          typeof comparedTotalNetSales === 'number'
+        ) ? 
+        <td>{comparedTotalNetSales.toLocaleString()}</td> : 0
+      }
+    </tr>
+  )
+}
+
         </tbody>
           </table>
+          </div>
+          
         </div> 
       </main>
+      <div className='right'>
+            <div className='rank'>
+          {
+            dateType === "Weekly" || dateType ==='Yearly' ?
+            (
+              <>
+                <h2>Sales Summary Chart</h2>
+                <div className='chart'>
+                  <Mchart dateType={dateType} data={NetSalesByDate} />
+                </div>
+              </>
+            )
+            : null
+          }
+            </div>
+          </div>
     </div>
   );
-}
+
 
 };
 

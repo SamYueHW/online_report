@@ -1,14 +1,38 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
-import './mchart.scss';
 
-const Mchart = ({ title, data }) => {
+const Mchart = ({ title, data, dateType }) => {
   const chartRef = useRef(null);
+  const [showComparedWeek, setShowComparedWeek] = useState(!!data.yAxisData2);
 
   useEffect(() => {
     const chartDom = chartRef.current;
     const myChart = echarts.init(chartDom);
     myChart.showLoading();
+
+    const seriesData = [
+      {
+        name: dateType === 'Yearly' ? 'Selected Year' : 'Selected Week',  // 根据 dateType 来设置 name
+        type: 'bar',
+        emphasis: {
+          focus: 'series',
+        },
+        data: data.yAxisData1,
+        xAxisIndex: 0,
+      }
+    ];
+
+    if (showComparedWeek) {
+      seriesData.push({
+        name: dateType === 'Yearly' ? 'Compared Year' : 'Compared Week', 
+        type: 'bar',
+        emphasis: {
+          focus: 'series',
+        },
+        data: data.yAxisData2,
+        xAxisIndex: 0,
+      });
+    }
 
     const option = {
       color: ['#5470C6', '#EE6666'],
@@ -23,12 +47,15 @@ const Mchart = ({ title, data }) => {
         bottom: 0,
         textStyle: {
           fontSize: 14,
-          fontWeight: 'bold', // 设置字体加粗
+          fontWeight: 'bold',
         },
       },
       grid: {
         top: 70,
         bottom: 50,
+      },
+      axisPointer: {
+        link: { xAxisIndex: 'all' },  // 这里链接所有的 X 轴
       },
       xAxis: [
         {
@@ -38,6 +65,31 @@ const Mchart = ({ title, data }) => {
           },
           axisLine: {
             onZero: true,
+            lineStyle: {
+              color: '#5470C6',
+            },
+          },
+          axisPointer: {
+            label: {
+              formatter: function(params) {
+                const formattedData = params.seriesData.length ? parseFloat(params.seriesData[0].data).toLocaleString() : '';
+                return params.value + (params.seriesData.length ? ':$ ' + formattedData : '');
+              }
+            }
+          },
+          
+          axisLabel: {
+            fontWeight: 'bold',
+          },
+          data: data.xAxisData1,
+        },
+        {
+          type: 'category',
+          axisTick: {
+            alignWithLabel: true,
+          },
+          axisLine: {
+            onZero: false,
             lineStyle: {
               color: '#EE6666',
             },
@@ -53,33 +105,7 @@ const Mchart = ({ title, data }) => {
             },
           },
           axisLabel: {
-            fontWeight: 'bold', // 设置字体加粗
-          },
-          data: data.xAxisData1,
-        },
-        {
-          type: 'category',
-          axisTick: {
-            alignWithLabel: true,
-          },
-          axisLine: {
-            onZero: false,
-            lineStyle: {
-              color: '#5470C6',
-            },
-          },
-          axisPointer: {
-            label: {
-              formatter: function (params) {
-                return (
-                  params.value +
-                  (params.seriesData.length ? '： $ ' + params.seriesData[0].data : '')
-                );
-              },
-            },
-          },
-          axisLabel: {
-            fontWeight: 'bold', // 设置字体加粗
+            fontWeight: 'bold',
           },
           data: data.xAxisData2,
         },
@@ -89,34 +115,7 @@ const Mchart = ({ title, data }) => {
           type: 'value',
         },
       ],
-      series: [
-        {
-          name: 'Last week',
-          type: 'line',
-          smooth: true,
-          emphasis: {
-            focus: 'series',
-          },
-          data: data.yAxisData2,
-          lineStyle: {
-            type: 'dashed', // 设置为虚线
-            width: 2, // 设置线条宽度
-            opacity: 0.7, // 设置线条透明度
-            lineDash: [2, 20], // 设置虚线的间隔和长度
-          },
-          xAxisIndex: 1,
-        },
-        {
-          name: 'This week',
-          type: 'line',
-          smooth: true,
-          emphasis: {
-            focus: 'series',
-          },
-          data: data.yAxisData1,
-          xAxisIndex: 0,
-        },
-      ],
+      series: seriesData,
     };
 
     myChart.setOption(option);
@@ -132,6 +131,10 @@ const Mchart = ({ title, data }) => {
       window.removeEventListener('resize', resizeChart);
       myChart.dispose();
     };
+  }, [data, showComparedWeek]);
+
+  useEffect(() => {
+    setShowComparedWeek(!!data.yAxisData2);
   }, [data]);
 
   return (
