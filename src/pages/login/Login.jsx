@@ -9,11 +9,10 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [key, setKey] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
-
- 
   const registerAsync = async () => {
     
     try {
@@ -34,17 +33,13 @@ const Login = () => {
         return;
       }
     // 发送加密后的密码到服务器端
-      const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/register', { email: email, password: password, activationKey: key }, {
+      const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/register', { email: email, password: password, activationKey: key, name: name }, {
       });
         // 处理登录成功的情况
       // 检查响应
       if (response.status === 200) {
-        
-        // 在这里使用客户端路由进行导航
-        // 如果你使用React Router
         setIsSignUpMode(false)
         navigate('/');
-
       }
     } catch (error) {
       if (error.response.status === 400) {
@@ -83,7 +78,8 @@ const Login = () => {
           // 存储JWT到sessionStorage
           sessionStorage.setItem('jwtToken', token);
           if (response.data.isAdmin) {
-            navigate('/dashboard');
+           
+            navigate('/admin-dashboard');
           } else {
             navigate('/checkStores');
           }
@@ -143,6 +139,11 @@ const Login = () => {
               <i className='bx bxs-lock-alt'></i>
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
+            <div className={styles.inputField}>
+              <i className='bx bxs-user'></i> {/* 更改图标为用户图标，或者你可以保留锁图标，取决于你的需要 */}
+              <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+
             <div className={styles.inputField}>
               <i className='bx bxs-key'></i>
               <input type="text" placeholder="Activation key" value={key} onChange={(e) => setKey(e.target.value)} />

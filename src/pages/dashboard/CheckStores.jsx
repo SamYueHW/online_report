@@ -95,10 +95,10 @@ const CheckStores = () => {
           'authorization': `Bearer ${token}`
         }
       };
+      
       const params = {
         fselected: selectedDate,
         tselected: tselectedDate, // 你可以根据需要修改这个值
-        
       }
 
       const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/checkStores', params, config); // 发送请求到服务器
@@ -112,10 +112,10 @@ const CheckStores = () => {
           setSearchDate(selectedDate);
           setSearchTDate(tselectedDate);
           if (response.data.storeData) {
-              
+            
             setStores(response.data.storeData); // 如果有多个商店，设置商店名称
             setBranchPaymentData(response.data.branchPaymentResults);
-            console.log(response.data.branchPaymentResults);
+
             setStoreNames(response.data.branchPaymentResults.storeNames);
           }
       }
@@ -157,9 +157,9 @@ const CheckStores = () => {
               }
             } 
             else if (response.status === 201 && response.data.success) {
-                console.log(response.data);
+
                 if (response.data.storeData) {
-                    console.log(response.data.branchPaymentResults);
+                    
                     setStores(response.data.storeData); // 如果有多个商店，设置商店名称
                     setBranchPaymentData(response.data.branchPaymentResults);
                     setStoreNames(response.data.branchPaymentResults.storeNames);
@@ -197,10 +197,13 @@ const CheckStores = () => {
 
   return (
     <div className="container">
-      <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} />
-      <main>
-    <div>
-      <h1>Check Stores</h1>
+      {/* <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} /> */}
+    <div className='main-layout'>
+    <div className='content'>
+    <main className='main-content v2'>
+    <div className='left-column'>
+
+      <h1 className='zdy-t1'>Check Stores</h1>
       <div className="date">
         <h2>Selected Date</h2>
         <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
@@ -213,14 +216,15 @@ const CheckStores = () => {
         {stores && Object.keys(stores).map((storeName, index) => (
           <div className='individual-store' key={index}>
             <span className='material-icons-sharp'>store</span>
-            <small className="text-muted">{storeName}</small>
+            <div className="text-muted" style={{tabSize: '15px', paddingTop: '5px'}}>{storeName}</div>
             <div className='middle'>
               <div className='left'>
                 {Object.keys(stores[storeName]).map((key, i) => {
                   if (key !== 'storeId') {
                     return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3>{formatKey(key)}</h3>
+                      <div key={i} className='row' style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',whiteSpace:'nowrap' }}>
+                        <h3 style={{ textAlign: 'left', marginRight: '20px'}}>{formatKey(key)}</h3>
+
                         <h5>
                           ${stores[storeName][key] !== null 
                             ? (stores[storeName][key] === 0 ? '0' : parseFloat(stores[storeName][key]).toFixed(2)) 
@@ -233,7 +237,9 @@ const CheckStores = () => {
                   return null;
                 })}
               </div>
-              <button className="store-button" onClick={() => handleStoreSelect(stores[storeName].storeId)}>Select</button>
+              <div className='select-store-btn'>
+                <button className="store-button" onClick={() => handleStoreSelect(stores[storeName].storeId)}>Select</button>
+              </div>
             </div>
           </div>
         ))}
@@ -244,10 +250,11 @@ const CheckStores = () => {
 
 
     </div>
-    </main>
+    <div className='right-column'>
     <div className='right'>
       {getBranchPaymentData() && Object.keys(getBranchPaymentData()).length > 0 && (
-          <div className='branch-summary'>
+           <div className='payment-summary'>
+          
             <h2>Branch Sales Summary</h2>
             {getBranchPaymentData().results.length > 0 ? (
               <>
@@ -256,20 +263,22 @@ const CheckStores = () => {
                     {`Includes: [${Array.isArray(storeNames) ? storeNames.map(store => store.StoreName).join(', ') : ''}]`}
                   </h4>
                 </div>
-                <div className='branch-section'>
+                <div className='non-cash-section'>
                   <div className="icon">
                     <span className='material-icons-sharp'>store</span>
                   </div>
-                  <table className="branch-payment-table">
-                    <tbody>
-                      {getBranchPaymentData().results.map((payment, index) => (
-                        <tr key={index}>
-                          <td><h3>{payment.Description}</h3></td>
-                          <td>${payment.TotalAmount.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="non-cash-container">
+                    {getBranchPaymentData().results.map((payment, index) => (
+                      <div key={index} className="non-cash-row">
+                        <div className="non-cash-description">
+                          <h3 style={{marginRight:'10px'}}>{payment.Description}</h3>
+                        </div>
+                        <div className="non-cash-amount">
+                          ${payment.TotalAmount.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             ) : (
@@ -277,6 +286,10 @@ const CheckStores = () => {
             )}
           </div>
         )}
+      </div>
+      </div>
+      </main>
+      </div>
       </div>
     </div>
   );

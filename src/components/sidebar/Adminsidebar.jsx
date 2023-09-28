@@ -49,13 +49,13 @@ const Sidebar = ({ user, onLogout,isOpen,onToggle  }) => {
 
       <ul className="nav-links">
         <li>
-          <a href="/dashboard">
+          <a href="/admin-dashboard">
             <i className="bx bx-home"></i>
             <span className="link_name">Dashboard</span>
           </a>
         </li>
 
-        <li>
+        {/* <li>
           <div className="icon-link online-report"  onClick={handleArrowClick}>
             <a href="/notification-list" onClick={handleArrowClick}>
               <i className="bx bx-collection"></i>
@@ -68,7 +68,7 @@ const Sidebar = ({ user, onLogout,isOpen,onToggle  }) => {
             
             <li><a href="/notification-setup" onClick={handleSubMenuClick}>Notification setup</a></li>
           </ul>
-        </li>
+        </li> */}
         
         <li>
     <div className="profile-details">

@@ -29,7 +29,7 @@ const SalesSummary = () => {
   const [selectedTotalNetSalesDateRange, setSelectedTotalNetSalesDateRange] = useState(null);
   const [comparedTotalNetSalesDateRange, setComparedTotalNetSalesDateRange] = useState(null);
 
- 
+  const [hasBranch, setHasBranch] = useState(false);
 
     // 设置澳大利亚悉尼时区的当前日期
   const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
@@ -52,9 +52,18 @@ const SalesSummary = () => {
     return moment(new Date(dateString)).format('YYYY-MM-DD');
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+
+  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 820);
+  useEffect(() => {
+    const handleResize = () => {
+      setShowSidebar(window.innerWidth > 820);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
     
 const processDashboardData = (dashboardData) => {
@@ -283,6 +292,7 @@ const processDashboardData = (dashboardData) => {
       if (response.status === 200) {
         // console.log(response.data.results);
         setDashboard_data(response.data.results);
+        setHasBranch(response.data.hasBranchResult);
         
         processDashboardData(response.data.results);
      
@@ -437,6 +447,7 @@ const processDashboardData = (dashboardData) => {
           
           setDashboard_data(response.data.results);
           processDashboardData(response.data.results);
+          setHasBranch(response.data.hasBranchResult);
           
           // setUser(response.data.username);
           setIsAdmin(response.data.isAdmin);
@@ -450,7 +461,7 @@ const processDashboardData = (dashboardData) => {
           setDashboard_data(response.data.data);
         }
       } catch (error) {
-        // navigate('/');
+        navigate('/');
         console.log(error);
       }
     };
@@ -477,8 +488,36 @@ const processDashboardData = (dashboardData) => {
 
   return (
     <div className="container">
-      <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} />
-      <main>
+      <div className='sider'>
+        <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}/>
+      </div>
+      <div className='main-layout'>
+      <div className='header'>
+        <button id ="menu-btn"  onClick={() => setShowSidebar(true)}>
+            <span className='material-icons-sharp'>menu</span>
+        </button>
+        <div className='top'>
+
+          {/* <div className='theme-toggler' onClick={handleThemeToggle}>
+          <span className='material-icons-sharp active'>light_mode</span>
+          <span className='material-icons-sharp'>dark_mode</span>
+          </div> */}
+          {/* <div className='profile'>
+            <div className='info'>
+              <p>Hey, <b>{getUser()}</b> [{storeName.StoreName}]</p>
+              <small className='text-muted'>Last Updates: {lastestUpdate}</small>
+            </div>  
+            <div className='profile-photo'>
+              <img src='./images/enrichIcon.jpg' />
+            </div>
+          </div> */}
+        </div>  
+      </div>
+      <div className='content'>
+      <main className='main-content' >
+      <div className='zdy-h'></div>
+        
+      <div className='left-column'>
         <div className="analyze-table">
           <h1>Sales Summary</h1>
           <Dropdown selected={dateType} setSelected={setDateType} options={dateOptions} />
@@ -568,7 +607,7 @@ const processDashboardData = (dashboardData) => {
           comparedTotalNetSalesDateRange.endDate === formatDate(tcomparedDate) && comparedDate && tcomparedDate &&
           typeof comparedTotalNetSales === 'number'
         ) ? 
-        <td>{comparedTotalNetSales.toLocaleString()}</td> : 0
+        <td>{comparedTotalNetSales.toLocaleString()}</td> : <td> 0 </td>
       }
     </tr>
   )
@@ -579,7 +618,8 @@ const processDashboardData = (dashboardData) => {
           </div>
           
         </div> 
-      </main>
+      </div>
+      <div className='right-column'>
       <div className='right'>
             <div className='rank'>
           {
@@ -596,6 +636,10 @@ const processDashboardData = (dashboardData) => {
           }
             </div>
           </div>
+          </div>
+          </main>
+          </div>
+      </div>
     </div>
   );
 

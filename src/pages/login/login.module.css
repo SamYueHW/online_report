@@ -273,8 +273,12 @@ form.signUpForm{
 
 /* Responsiveness */
 @media (max-width: 768px){
+    .signinSignup {
+        /* 添加你需要的样式来确保按钮可见和可点击 */
+        z-index: 11; /* 举例 */
+      }
     .bodycontainer{
-        min-height: 800px;
+        min-height: 80vh;
         height: 100vh;
     }
     .bodycontainer:before{
@@ -353,6 +357,10 @@ form.signUpForm{
 
 
 @media (max-width: 576px) {
+    .signinSignup {
+        /* 添加你需要的样式来确保按钮可见和可点击 */
+        z-index: 11; /* 举例 */
+      }
     form {
       padding: 0 1.5rem;
     }

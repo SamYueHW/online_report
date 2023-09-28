@@ -10,6 +10,7 @@ import { CircularProgress } from '@mui/material';
 import Leaderboard from '../../components/leaderboard/Leaderboard';
 import Chart from '../../components/chart/Chart';
 
+
 const Dashboardnew = () => {
   const [user, setUser, getUser] = useGetState(null);
   const [lastestUpdate, setLastestUpdate] = useState(null);
@@ -18,7 +19,7 @@ const Dashboardnew = () => {
 
   const [isLoading, setIsLoading, getIsLoading] = useGetState(true);
   const [dashboard_data, setDashboard_data, getDashboard_data] = useGetState(null);
-  
+  const [hasBranch, setHasBranch] = useState(false);
 
   const [leaderboardData, setleaderboardData] = useState(null);
 
@@ -27,6 +28,8 @@ const Dashboardnew = () => {
   const [cashAmount, setCashAmount] = useState(0);
   const [nonCashPayments, setNonCashPayments] = useState([]);
   const [storeName, setStoreName] = useState(null);
+
+  const [posVersion, setposVersion] = useState(null);
  
 
   const [branchPaymentData, setBranchPaymentData,getBranchPaymentData] = useGetState(null);
@@ -39,9 +42,12 @@ const Dashboardnew = () => {
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [defaultKeysToShow, setDefaultKeysToShow] = useState('');  // 默认显示的键的集合
 
     // 设置澳大利亚悉尼时区的当前日期
   const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
+  const [minDate, setMinDate] = useState('');
+  const [maxDate, setMaxDate] = useState('');
 
     // 当前日期状态
   const [selectedDate, setSelectedDate] = useState(australiaDate);
@@ -51,7 +57,27 @@ const Dashboardnew = () => {
   const isCurrentDate =selectedDate === australiaDate && tselectedDate === australiaDate;
   const [showAll, setShowAll] = useState(false);
 
-  const defaultKeysToShow = new Set(['TotalNetSales', 
+  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 935);
+  useEffect(() => {
+    const handleResize = () => {
+      setShowSidebar(window.innerWidth > 935);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+  useEffect(() => {
+    const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
+    const lastYearDate = moment.tz('Australia/Sydney').subtract(1, 'years').format('YYYY-MM-DD');
+
+    setMinDate(lastYearDate);
+    setMaxDate(australiaDate);
+  }, []);
+
+ 
+  const defaultKeysToShow_r = new Set(['TotalNetSales', 
   'TotalTransaction', 
   'TotalEftpos',
   'CashInTill',
@@ -59,6 +85,24 @@ const Dashboardnew = () => {
   'AverageSales',
   'NegativeSalesAmount',
  ]);  // 你想默认显示的键的集合
+
+ const defaultKeysToShow_h = new Set(['NetSales',
+  'TotalTransaction',
+  'TotalEftposPayment',
+  'CashInDrawer',
+  'NonSaleOpenDrawer',
+  'AverageSales',
+  'VoidAmount',
+]);  // 你想默认显示的键的集合
+
+useEffect(() => {
+  if (posVersion === 0) {
+    setDefaultKeysToShow(defaultKeysToShow_r);
+  } else {
+    setDefaultKeysToShow(defaultKeysToShow_h);
+  }
+}, [posVersion]);
+
   
 // const processDashboardData = (dashboardData) => {
 //   console.log(dashboardData);
@@ -162,10 +206,10 @@ const Dashboardnew = () => {
 
     Object.keys(paymentData).forEach(dateRangeKey => {
       const [startDate, endDate] = dateRangeKey.split(' - ');
-      console.log(startDate);
-      console.log(endDate);
-      console.log(selectedInput);
-      console.log(tselectedInput);
+      // console.log(startDate);
+      // console.log(endDate);
+      // console.log(selectedInput);
+      // console.log(tselectedInput);
       if (startDate === selectedInput && endDate === tselectedInput) {
         paymentData[dateRangeKey].forEach(item => {
           if (item.Description.toUpperCase() === 'CASH') {
@@ -233,19 +277,17 @@ const Dashboardnew = () => {
         //console.log(response.data.results);
         setDashboard_data(response.data.results);
         // processDashboardData(response.data.results);
-
+        // setposVersion(response.data.posVersion);
         setleaderboardData(response.data.itemSalesResults);
-        
         setPaymentData(response.data.paymentResults);
+        setHasBranch(response.data.hasBranchResult);
 
-        
         const { cashAmount, nonCashPayments } = processPaymentData(response.data.paymentResults, selectedDate,tselectedDate);
    
        
         setCashAmount(cashAmount);
         setNonCashPayments(nonCashPayments);
         setBranchPaymentData(response.data.branchPaymentResults);
-        
           
         // setUser(response.data.username);
         setIsAdmin(response.data.isAdmin);
@@ -284,7 +326,7 @@ const Dashboardnew = () => {
     return processedText;
   };
   
-  
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -314,17 +356,19 @@ const Dashboardnew = () => {
           return;
         }
         if (!response.data.isAdmin && response.data.results) {
-          
+          setposVersion(response.data.posVersion);
           // console.log(response.data.results.NetSales);
           setDashboard_data(response.data.results);
+         
           //processDashboardData(response.data.results);
 
-          
           setleaderboardData(response.data.itemSalesResults);
           
           setPaymentData(response.data.paymentResults);
+          setHasBranch(response.data.hasBranchResult);
+          // console.log(response.data.hasBranchResult)
           // console.log(response.data.paymentResults);
-  
+          
           const { cashAmount, nonCashPayments } = processPaymentData(response.data.paymentResults, selectedDate,tselectedDate);
 
           setCashAmount(cashAmount);
@@ -350,7 +394,6 @@ const Dashboardnew = () => {
       } catch (error) {
         //handleLogout();
         console.log(error);
-        
       }
     };
     fetchData();
@@ -387,183 +430,212 @@ else if (!getIsLoading() && !getIsAdmin() ) {
  
 
   return (
-    <div className="container">
-      <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} />
-      <main>
+
+<div className="container">
+<div className='sider'>
+  <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}/>
+</div>
+  <div className='main-layout'>
+  <div className='header'>
+    <button id ="menu-btn"  onClick={() => setShowSidebar(true)}>
+        <span className='material-icons-sharp'>menu</span>
+    </button>
+    <div className='top'>
+
+      {/* <div className='theme-toggler' onClick={handleThemeToggle}>
+      <span className='material-icons-sharp active'>light_mode</span>
+      <span className='material-icons-sharp'>dark_mode</span>
+      </div> */}
+      <div className='profile'>
+        <div className='info'>
+          <p>Hey, <b>{getUser()}</b> [{storeName.StoreName}]</p>
+          <small className='text-muted'>Last Updates: {lastestUpdate}</small>
+        </div>  
+        <div className='profile-photo'>
+          <img src='./images/enrichIcon.jpg' />
+        </div>
+      </div>
+    </div>  
+  </div>
+  <div className='content'>
+    <main className='main-content'>
+      <div className='zdy-h'></div>
+      <div className='left-column'>
         <div className="analyze-table">
+        
           <h1>Dashboard</h1>
           <div className="date">
-            <h2>Selected Date</h2>
-            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-            to
-            <input type="date" value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} />
+              <h2>Selected Date</h2>
+              <input type="date" min={minDate} max={maxDate} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+              to
+              <input type="date" min={minDate} max={maxDate} value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} />
           </div>
           <button className="ripple" onClick={handleSearch}>Search</button>
           <div className="daily-report">
             <h2>Daily Report</h2>
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>
-              {
-                isCurrentDate ? 
-                <>
-                  Current Date: <br />
-                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                </> : 
-                (selectedDate === tselectedDate ? 
-                <>
-                  Selected Date: <br />
-                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                </> : 
-                <>
-                  Selected Date Range: <br />
-                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tselectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                </>)
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>
+                {
+                  isCurrentDate ? 
+                  <>
+                    Current Date: <br />
+                    {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                  </> : 
+                  (selectedDate === tselectedDate ? 
+                  <>
+                    Selected Date: <br />
+                    {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                  </> : 
+                  <>
+                    Selected Date Range: <br />
+                    {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tselectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                  </>)
+                }
+              </th>
+                </tr>
+              </thead>
+              <tbody>
+          {
+            Object.keys(getDashboard_data()).map((dateRangeKey, index) => {
+              const [startDate, endDate] = dateRangeKey.split(' - ');
+
+              if (startDate === selectedDate && endDate === tselectedDate && getDashboard_data()[dateRangeKey].length !== 0) {
+                const dataForThisRange = getDashboard_data()[dateRangeKey][0];
+                const keysToRender = showAll ? Object.keys(dataForThisRange) : Array.from(defaultKeysToShow);  // 根据 defaultKeysToShow 筛选
+
+                // 计算 Discount
+                const discount = (dataForThisRange['RedeemPoints'] || 0) + (dataForThisRange['ItemDiscount'] || 0) + (dataForThisRange['DollarDiscount'] || 0)+ (dataForThisRange['VoucherDiscount'] || 0);
+
+                return (
+                  <>
+                    {keysToRender.map((key, innerIndex) => (
+                      <tr key={innerIndex}>
+                        <td className="left-align">
+                          {key === 'NegativeSalesAmount' ? 'Void Sales Amount' : (key === 'NegativeSalesQty' ? 'Void Sales Qty' : addSpacesToCamelCase(key))}
+                        </td>
+                        <td className="custom-font-size">
+                          {typeof dataForThisRange[key] === 'number' ? parseFloat(dataForThisRange[key].toFixed(2)).toLocaleString() : dataForThisRange[key] || '0'}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* 添加 Discount 行 */}
+                    {!showAll && (
+                      <tr>
+                        <td className="left-align">Total Discount</td>
+                        <td className="custom-font-size">{parseFloat(discount.toFixed(2)).toLocaleString()}</td>
+                      </tr>
+                    )}
+                  </>
+                );
               }
-            </th>
-              </tr>
-            </thead>
-            <tbody>
-        {
-          Object.keys(getDashboard_data()).map((dateRangeKey, index) => {
-            const [startDate, endDate] = dateRangeKey.split(' - ');
-
-            if (startDate === selectedDate && endDate === tselectedDate && getDashboard_data()[dateRangeKey].length !== 0) {
-              const dataForThisRange = getDashboard_data()[dateRangeKey][0];
-              const keysToRender = showAll ? Object.keys(dataForThisRange) : Array.from(defaultKeysToShow);  // 根据 defaultKeysToShow 筛选
-
-              // 计算 Discount
-              const discount = (dataForThisRange['RedeemPoints'] || 0) + (dataForThisRange['ItemDiscount'] || 0) + (dataForThisRange['DollarDiscount'] || 0)+ (dataForThisRange['VoucherDiscount'] || 0);
-
-              return (
-                <>
-                  {keysToRender.map((key, innerIndex) => (
-                    <tr key={innerIndex}>
-                      <td className="left-align">
-                        {key === 'NegativeSalesAmount' ? 'Void Sales Amount' : (key === 'NegativeSalesQty' ? 'Void Sales Qty' : addSpacesToCamelCase(key))}
-                      </td>
-                      <td className="custom-font-size">
-                        {typeof dataForThisRange[key] === 'number' ? parseFloat(dataForThisRange[key].toFixed(2)).toLocaleString() : dataForThisRange[key] || '0'}
-                      </td>
-                    </tr>
-                  ))}
-                  {/* 添加 Discount 行 */}
-                  {!showAll && (
-                    <tr>
-                      <td className="left-align">Total Discount</td>
-                      <td className="custom-font-size">{parseFloat(discount.toFixed(2)).toLocaleString()}</td>
-                    </tr>
-                  )}
-                </>
-              );
-            }
-            return null;
-          })
-        }
-      </tbody>
-    </table>
-    <a href="#" onClick={() => setShowAll(!showAll)}>Show All</a>
+              return null;
+            })
+          }
+        </tbody>
+            </table>
+            <a href="#" onClick={() => setShowAll(!showAll)}>Show All</a>
           </div>
         </div>
-        
-      </main>
-      <div className = 'right'>
-        <div className='top'>
-          <button id ="menu-btn">
-            <span className='material-icons-sharp'>menu</span>
-          </button>
-          {/* <div className='theme-toggler' onClick={handleThemeToggle}>
-            <span className='material-icons-sharp active'>light_mode</span>
-            <span className='material-icons-sharp'>dark_mode</span>
-          </div> */}
-          <div className='profile'>
-            <div className='info'>
-              <p>Hey, <b>{getUser()}</b> [{storeName.StoreName}]</p>
-              <small className='text-muted'>Last Updates: {lastestUpdate}</small>
-            </div>  
-            <div className='profile-photo'>
-              <img src='./images/enrichIcon.jpg' />
-            </div>
-          </div>
-
-        </div>
-        <div className='rank'>
-          <h2>Sales Ranking</h2>
-          <div className='rank-list'>
-            {(() => {
-              // 初始化一个变量来保存匹配日期范围的数据
-              let dataForLeaderboard = [];
-
-              // 检查 leaderboardData 是否存在
-              if (leaderboardData) {
-                Object.keys(leaderboardData).forEach(dateRangeKey => {
-                  // 拆分日期范围为开始日期和结束日期
-                  const [startDate, endDate] = dateRangeKey.split(' - ');
-
-                  // 如果 startDate 和 endDate 匹配 selectedDate 和 tselectedDate，则保存这个日期范围的数据
-                  if (startDate === selectedDate && endDate === tselectedDate && leaderboardData[dateRangeKey].length !== 0) {
-                    dataForLeaderboard = leaderboardData[dateRangeKey];
-                  }
-                });
-              }
-
-              // 渲染 Leaderboard 组件，并将匹配的数据传入
-              return <Leaderboard data={dataForLeaderboard.length > 0 ? dataForLeaderboard : []} />;
-            })()}
-          </div>
-        </div>
-        <div className='payment-summary'>
-            <h2>Payment Method Summary</h2>
-
-            {nonCashPayments !== null && cashAmount !== null ? (
-              <div className='payment-list'>
-                <div className="cash-section">
-                  <div className="icon">
-                    <span className='material-icons-sharp'>payments</span>
-                  </div>
-                  <div className="cash-item">
-                    <h3>CASH</h3>
-                    <span className="cash-amount">${cashAmount.toFixed(2)}</span>
-                  </div>
-                </div>
-                {nonCashPayments && nonCashPayments.length > 0 && (
-                    <div className="non-cash-section">
-                      <div className="icon">
-                        <span className='material-icons-sharp'>credit_cards</span>
-                      </div>
-                      <table className="non-cash-table">
-                        <tbody>
-                          {nonCashPayments.map((payment, index) => (
-                            <tr key={index}>
-                              <td><h3>{payment.Description}</h3></td>
-                              <td>${payment.Amount.toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {pieChartData && pieChartData.length > 0 && (
-                    <Chart title="Payment Method Analytics" data={pieChartData} />
-                  )}
-                </div>
-                
-              ) : (
-              <div >
-                {/* 如果 paymentData 不存在或者日期不匹配，你可以在这里放置备选内容 */}
-              </div>
-            )}
-        </div>
-
-
-
-        
-        
       </div>
+      <div className='right-column'>
+    
 
+        <div className = 'right'>
+    <div className='rank'>
+      <h2>Sales Ranking</h2>
+      <div className='rank-list'>
+        {(() => {
+          // 初始化一个变量来保存匹配日期范围的数据
+          let dataForLeaderboard = [];
+
+          // 检查 leaderboardData 是否存在
+          if (leaderboardData) {
+            Object.keys(leaderboardData).forEach(dateRangeKey => {
+              // 拆分日期范围为开始日期和结束日期
+              const [startDate, endDate] = dateRangeKey.split(' - ');
+
+              // 如果 startDate 和 endDate 匹配 selectedDate 和 tselectedDate，则保存这个日期范围的数据
+              if (startDate === selectedDate && endDate === tselectedDate && leaderboardData[dateRangeKey].length !== 0) {
+                dataForLeaderboard = leaderboardData[dateRangeKey];
+              }
+            });
+          }
+
+          // 渲染 Leaderboard 组件，并将匹配的数据传入
+          return <Leaderboard data={dataForLeaderboard.length > 0 ? dataForLeaderboard : []} />;
+        })()}
+      </div>
     </div>
+    <div className='payment-summary'>
+        <h2>Payment Method Summary</h2>
+
+        {nonCashPayments !== null && cashAmount !== null ? (
+          <div className='payment-list'>
+            <div className="non-cash-section">
+            <div className="icon" style={{ background: "#7380ec" }}>
+                <span className='material-icons-sharp'>payments</span>
+              </div>
+              <div className="non-cash-container">
+                <div className="non-cash-row">
+                  <div className="non-cash-description">
+                    <h3>CASH</h3>
+                    
+                  </div>
+                  <div className="non-cash-amount">${cashAmount.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+            {nonCashPayments && nonCashPayments.length > 0 && (
+                <div className="non-cash-section">
+                  <div className="icon">
+                    <span className='material-icons-sharp'>credit_cards</span>
+                  </div>
+                  <div className="non-cash-container">
+                    {nonCashPayments.map((payment, index) => (
+                      <div key={index} className="non-cash-row">
+                        <div className="non-cash-description">
+                          <h3>{payment.Description}</h3>
+                        </div>
+                        <div className="non-cash-amount">
+                          ${payment.Amount.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+              )}
+              {pieChartData && pieChartData.length > 0 && (
+                <Chart title="Payment Method Analytics" data={pieChartData} />
+              )}
+            </div>
+            
+          ) : (
+          <div >
+            {/* 如果 paymentData 不存在或者日期不匹配，你可以在这里放置备选内容 */}
+          </div>
+        )}
+    </div>
+
+
+
+    
+    
+      </div>
+  </div>
+  </main>
+</div>
+<div className="footer">
+      {/* 你的底部代码 */}
+  </div>
+
+
+</div>
+
+</div>
   );
 }
 

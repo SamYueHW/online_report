@@ -1,22 +1,54 @@
-import React from 'react';
+import React, {useState} from 'react';
 import styles from './GuestSidebar.module.css';
-import { useLocation } from 'react-router-dom';
+import axios from 'axios';
+// import { useHistory } from 'react-router-dom';
+import {useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const Sidebarnew = ({ user, onLogout }) => {
+const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch}) => {
   const counter = 6;
   const location = useLocation();
+  const navigate = useNavigate();
+
+  
+  // 使用React状态来控制侧边栏是否显示
+  const [isSidebarVisible, setSidebarVisible] = useState(false);
 
   const handleLogout = () => {
     onLogout();
   };
 
+  const handleSelectBranch = async () => {
+    const token = sessionStorage.getItem('jwtToken'); // 从 sessionStorage 获取 JWT Token
+
+    
+    const response = await axios.post(
+      process.env.REACT_APP_SERVER_URL + '/update-jwt', 
+      {}, // 这里是你要发送的数据，如果没有，就留空对象
+      {
+        headers: {
+          'authorization': `Bearer ${token}`
+        },
+        withCredentials: true
+      }
+    );
+   
+  
+    if (response.status === 200 && response.data.newJwt) {
+      sessionStorage.setItem('jwtToken', response.data.newJwt);
+      navigate('/CheckStores');
+      
+    }
+  };
+
   return (
-    <aside>
+    <aside style={{ display: showSidebar ? 'block' : 'none' }}>
       <div className={styles.top}>
         <div className={styles.logo}>
           <img src="./images/logo.png" alt="Logo" />
         </div>
-        <div className={styles.close} id="close-btn">
+        
+        <div className={styles.close} id="close-btn" onClick={() => setShowSidebar(false)}>
           <span className="material-icons-sharp">close</span>
         </div>
       </div>
@@ -39,10 +71,17 @@ const Sidebarnew = ({ user, onLogout }) => {
           <span className="material-icons-sharp">shopping_cart</span>
           <h3>Renew Plan</h3>
         </a>
+        {hasBranch && (
+        <a onClick={handleSelectBranch}>
+          <span className="material-icons-sharp">view_cozy</span>
+          <h3>Select Branch</h3>
+        </a>
+      )}
         <a href="#" onClick={handleLogout}>
           <span className="material-icons-sharp">logout</span>
           <h3>Logout</h3>
         </a>
+     
       </div>
     </aside>
   );

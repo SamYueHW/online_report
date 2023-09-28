@@ -1,15 +1,51 @@
 .leaderboard {
     display: flex;
     flex-direction: column; 
-    padding: 10px;
+    padding: 10px 20px;
     height: auto;
     -webkit-box-shadow: 2px 4px 10px 1px rgba(0,0,0,0.47);
     box-shadow: 2px 4px 10px 1px rgba(201,201,201,0.47);
     border-radius: 10px;
     background-color: var(--color-white);
 }
+.rank-list td,.rank-list th{
+    padding: 0;
+    border: none;
+    text-align: center;
+}
+.rank-list table {
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+.rank-list td:nth-child(1),.rank-list th:nth-child(1){
+    width: 10%;
+}
+.leaderboard table tbody tr td:first-child {
+    color: black;
+    font-weight: normal;
+    font-size: 12px;
+}
+.rank-list td:nth-child(1),.rank-list th:nth-child(1){
+    width: 70px;
+}
+.rank-list td:nth-child(2),.rank-list th:nth-child(2){
+    text-align: left;
+    padding: 0 10px;
+}
+.rank-list td:nth-child(3),.rank-list th:nth-child(3){
+    text-align: center;
+    width: 120px;
+}
+.rank-list td:nth-child(4),.rank-list th:nth-child(4){
+    text-align: right;
+    padding-right: 12px;
+    width: 120px;
+}
 
-
+.leaderboard .item span.qty{
+    text-align: center;
+}
 .leaderboard .header, .leaderboard .item {
     display: flex; 
     justify-content: space-between; 

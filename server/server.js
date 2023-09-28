@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 
 const jwtVerify = util.promisify(jwt.verify);
 
-const socketIO = require('socket.io');
+// const socketIO = require('socket.io');
 
 const bcrypt = require("bcrypt") // Importing bcrypt package
 const crypto = require('crypto');
@@ -66,7 +66,8 @@ app.use(express.json({ type: 'application/json' }));
 //   credentials: true,  // 允许跨域携带凭证
 // }));
 app.use(cors({
-  origin: 'http://enrichpos.com.au:3000', // 指定接受请求的源
+  // origin: 'http://localhost:3000', // 指定接受请求的源
+  origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
   credentials: true,  // 允许跨域携带凭证
 }));
 
@@ -251,14 +252,26 @@ app.post('/checkStores', (req, res) => {
           const pos_version_query = 'SELECT PosVersion, StoreName FROM stores WHERE StoreId = ?';
           const pos_version_results = await executeDb(pos_version_query, [storeId], { fetchAll: true });
 
-          const columnsToSum = ['TotalNetSales', 'TotalTransaction', 'TotalEftpos', 'NegativeSalesAmount'];  
+          // const columnsToSum_h = ['NetSales', 'Total ']
+
+          const columnsToSum = ['TotalNetSales', 
+          'TotalTransaction', 
+          'TotalEftpos', 
+          'NegativeSalesAmount'];  
+
+          const columnsToSum_h = ['NetSales',
+          'TotalTransaction',
+          'TotalEftposPayment', 
+          'VoidAmount'
+          ];
           const sumColumns = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
+          const sumColumns_h = columnsToSum_h.map(column => `SUM(${column}) AS ${column}`).join(', ');
 
           if (pos_version_results[0].PosVersion == '1') {
             query = `
               SELECT 
-                  ${sumColumns},
-                  SUM(TotalNetSales) / SUM(TotalTransaction) AS AverageSales
+                  ${sumColumns_h},
+                  SUM(NetSales) / SUM(TotalTransaction) AS AverageSales
               FROM report_records_h 
               WHERE StoreId = ? AND Date BETWEEN ? AND ?
             `;
@@ -298,7 +311,7 @@ app.post('/checkStores', (req, res) => {
           };
           
         }
-        console.log(branchPaymentWithDate);
+        // console.log(branchPaymentWithDate);
         // 将汇总数据发送回客户端
         res.status(201).json({ success: true, storeData: storeData, branchPaymentResults: branchPaymentWithDate });
 
@@ -335,7 +348,27 @@ app.post('/selectStore', (req, res) => {
   
 });
 
-const userCallbacks = {};
+app.get('/checkAccount', (req, res) => {
+  try{
+    const origin_token = req.headers['authorization'];  // 打印所有请求头，以便调试
+    const token = origin_token.split(' ')[1]; // 获取 JWT Token
+    // 验证并解码 JWT
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+
+    
+    if(decoded.isAdmin === true){
+      return res.status(200).json({ success: true, isAdmin: true });
+
+  }})
+  
+  }catch (error) {
+    console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 app.get('/dashboard',(req, res) => {
     try {
       
@@ -348,86 +381,20 @@ app.get('/dashboard',(req, res) => {
         }
 
       
-      if(decoded.username === process.env.ADMIN_EMAIL){
+      if(decoded.isAdmin === true){
         const query = 'SELECT * FROM stores';
+        const customer_query = 'SELECT * FROM customers';
+        const c_s_query = 'SELECT * FROM customer_store';
+        const customer_results = await executeDb(customer_query, [], { fetchAll: true });
+        const c_s_results = await executeDb(c_s_query, [], { fetchAll: true });
         const store_result = await executeDb(query, { fetchAll: true });
-        return res.status(200).json({ success: false, isAdmin: true, data: store_result});
+        const key_query = 'SELECT * FROM activation_keys';
+        const key_result = await executeDb(key_query, [], { fetchAll: true });
+        return res.status(200).json({ success: true, isAdmin: true, store_data: store_result, keys:key_result });
       }
-      const storeIds = decoded.storeIds; // 从载荷中获取 storeIds
-      const selectedStoreId = decoded.selectedStoreId; // 从载荷中获取 selectedStoreId
-      
-      if (selectedStoreId && storeIds.includes(selectedStoreId)) {
-        
-        const pos_version_query = 'SELECT PosVersion, LastestReportUpdateTime,StoreName FROM stores WHERE StoreId = (?)';
-        const pos_version_results = await executeDb(pos_version_query, [selectedStoreId], { fetchAll: true });
-        const options = { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' };
-        const currentDate = new Date().toLocaleDateString('en-CA', options);
-        const customer_name_query = 'SELECT CustomerName FROM customers WHERE email = ?';
-        const customer_name_results = await executeDb(customer_name_query, [decoded.username], { fetchAll: true });
-        let query;
-        const LastestReportUpdateTimeResult = pos_version_results[0].LastestReportUpdateTime;
-        const ClientNameResult = customer_name_results[0].CustomerName;
-        if (pos_version_results[0].PosVersion == '1') {
-          query = 'SELECT * FROM report_records_h WHERE StoreId = ? AND Date = ?';
-        } else {
-          query = 'SELECT * FROM report_records_r WHERE StoreId = ? AND Date = ?';
-        }
-        const results = await executeDb(query, [selectedStoreId, currentDate], { fetchAll: true });
-        // 初始化一个空对象来保存整理后的数据
-        const dataWithDate = {};
-        if (results.length === 0) {
-          dataWithDate[currentDate] = {};
-        } else {
-          results.forEach(item => {
-            // 从每个项目中解构出 RecordId 和 StoreId，然后获取其余的数据
-            const { RecordId, StoreId, Date, ...rest } = item;
-            // 使用日期作为键，并将其余的数据作为值
-            dataWithDate[item.Date] = rest;
-          });
-        }
-        let branchPaymentWithDate = {};
-        if (storeIds.length > 1) {
-          const storeNamesQuery = 'SELECT StoreName FROM stores WHERE StoreId IN (?)';
-          const storeNamesResults = await executeDb(storeNamesQuery, [storeIds], { fetchAll: true });
-
-          const placeholders = storeIds.map(() => '?').join(', ');
-          const branchPayment = `SELECT Description, SUM(Amount) as TotalAmount FROM report_payment_records WHERE Date = ? AND StoreId IN (${placeholders}) GROUP BY Description`;
-          const branchPaymentResults = await executeDb(branchPayment, [currentDate, ...storeIds], { fetchAll: true });
-          branchPaymentWithDate = {
-            date: currentDate,
-            storeNames: storeNamesResults,
-            results: branchPaymentResults
-          };
-          
-        }
-        const itemSalesQuery = 'SELECT Description, Amount, Qty FROM report_itemsales_records WHERE StoreId = ? AND Date = ? ORDER By Amount DESC';
-        const itemSalesResults = await executeDb(itemSalesQuery, [selectedStoreId, currentDate], { fetchAll: true });
-        const paymentQuery = 'SELECT Description, Amount FROM report_payment_records WHERE StoreId = ? AND Date = ?';
-        const paymentResults = await executeDb(paymentQuery, [selectedStoreId, currentDate], { fetchAll: true });
-
-        
-        const itemSalesWithDate = {
-          date: currentDate,
-          results: itemSalesResults
-        };
-        const paymentSalesWithDate = {
-          date: currentDate,
-          results: paymentResults
-        };
-        
-
-        res.status(200).json({
-          
-          ClientNameResult: ClientNameResult,
-          StoreName: pos_version_results[0].StoreName,
-          LastestReportUpdateTimeResult: LastestReportUpdateTimeResult,
-          results: dataWithDate,
-          itemSalesResults: itemSalesWithDate,
-          paymentResults: paymentSalesWithDate,
-          branchPaymentResults: branchPaymentWithDate,
-          isAdmin: false
-        });
-      };
+      else{
+        return res.status(200).json({ success: false, isAdmin: false });
+      }
     });
     } catch (error) {
       console.error('Error querying customer_store table:', error);
@@ -444,6 +411,10 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
     const selectedStoreId = decoded.selectedStoreId;
 
     if (selectedStoreId && storeIds.includes(selectedStoreId)) {
+      let hasBranch = false;
+      if (storeIds.length > 1) {
+        hasBranch = true;
+      }
       const pos_version_results = await executeDb(posVersionQuery, [selectedStoreId], { fetchAll: true });
       const LastestReportUpdateTimeResult = pos_version_results[0].LastestReportUpdateTime;
       
@@ -478,16 +449,49 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
         'GSTCollected',
         'TotalVoucherReceived',
         'NonSalesTillOpen'
+    ];
 
+    const columnsToSum_h = [
+      'TotalSales',
+      'TotalDiscount',
+      'VoucherDiscount',
+      'PointsRedeem',
+      'NetSales',
+      'Rounding',
+      'TotalTips',
+      'CreditCardSurcharge',
+      'GiftcardSales',
+      'GiftcardPayment',
+      'TotalReceived',
+      'CashPayOut',
+      'CashFloatIn',
+      'CashFloatOut',
+      'CashInDrawer',
+      'CashLessTips',
+      'TotalEftposPayment',
+      'TotalVoucherReceived',
+      'TotalSalesExTax',
+      'TotalGST',
+      'TotalServiceCharge',
+      'TotalOtherCharge',
+      'TotalPeople',
+      'TotalTransaction',
+      'WastageAmount',
+      'VoidQty',
+      'VoidAmount',
+      'NonSaleOpenDrawer',
     ];
 
     const sumColumns_r = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
-    const sumColumns_h = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
-    if (pos_version_results[0].PosVersion === '1') {
+    const sumColumns_h = columnsToSum_h.map(column => `SUM(${column}) AS ${column}`).join(', ');
+ 
+    if (pos_version_results[0].PosVersion === 1) {
         query = `
             SELECT 
                 ${sumColumns_h},
-                SUM(TotalNetSales) / SUM(TotalTransaction) AS AverageSales
+                SUM(NetSales) / SUM(TotalTransaction) AS AverageSales,
+                SUM(NetSales) / SUM(TotalPeople) AS PPH
+                
             FROM report_records_h 
             WHERE StoreId = ? AND Date BETWEEN ? AND ?
         `;
@@ -500,7 +504,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
             WHERE StoreId = ? AND Date BETWEEN ? AND ?
         `;
     }
-
+      
       const results = await executeDb(query, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
       const dataWithDate = {};
 
@@ -512,9 +516,6 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
         dataWithDate[dateRangeKey] = results;
       }
 
-
-
-     
       const itemSalesQuery = 'SELECT Description, sum(Amount) as Amount, sum(Qty) as Qty FROM report_itemsales_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description ORDER By Amount DESC';
       const itemSalesResults = await executeDb(itemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
       const paymentQuery = 'SELECT Description, sum(Amount) as Amount FROM report_payment_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description';
@@ -535,8 +536,9 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       }
       const storeNamesQuery = 'SELECT StoreName FROM stores WHERE StoreId IN (?)';
       const storeNamesResults = await executeDb(storeNamesQuery, [storeIds], { fetchAll: true });
-      return { status: 200, data: { 
-        
+
+      return { status: 200, data: {
+      PosVersion: pos_version_results[0].PosVersion,
       ClientNameResult: ClientNameResult,
       StoreName: pos_version_results[0].StoreName,
       LastestReportUpdateTimeResult: LastestReportUpdateTimeResult,
@@ -544,6 +546,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       StoreName: storeNamesResults[0],
       itemSalesResults:itemSalesWithDate,
       paymentResults:paymentSalesWithDate, 
+      hasBranchResult: hasBranch,
 
       // branchPaymentResults:branchPaymentWithDate, 
       isAdmin: false } };
@@ -632,12 +635,17 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
     const storeIds = decoded.storeIds;
     const selectedStoreId = decoded.selectedStoreId;
 
+
     if (selectedStoreId && storeIds.includes(selectedStoreId)) {
+      let hasBranch = false;
+      if (storeIds.length > 1) {
+        hasBranch = true;
+      }
       const pos_version_results = await executeDb(posVersionQuery, [selectedStoreId], { fetchAll: true });
       let query;
-      if (pos_version_results[0].PosVersion === '1') {
+      if (pos_version_results[0].PosVersion === 1) {
         // 构建 SQL 查询
-        query = `SELECT TotalNetSales, Date FROM report_records_h WHERE StoreId = ? AND Date >= ? AND Date <= ?`;
+        query = `SELECT NetSales as TotalNetSales, Date FROM report_records_h WHERE StoreId = ? AND Date >= ? AND Date <= ?`;
       } else {
         query = `SELECT TotalNetSales, Date FROM report_records_r WHERE StoreId = ? AND Date >= ? AND Date <= ?`;
       }
@@ -652,7 +660,7 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
       }
       
 
-      return { status: 200, data: { message: 'success', results: dataWithDate, isAdmin: false } };
+      return { status: 200, data: { message: 'success', results: dataWithDate, hasBranchResult: hasBranch, isAdmin: false } };
     } else {
       return { status: 400, data: { message: 'Invalid store id' } };
     }
@@ -673,12 +681,14 @@ app.get('/searchSalesSummary', async (req, res) => {
   const token = origin_token.split(' ')[1];
 
   const pos_version_query = 'SELECT PosVersion FROM stores WHERE StoreId = ?';
+  
 
   if (fselected !== "" && tselected !== "" && fcompared === "" && tcompared === "" ) {
     const result = await fetchSalesSummary(fselected, tselected, pos_version_query, token);
     res.status(200).json({
       message: 'success',
       results: [result.data.results],
+      hasBranchResult: result.data.hasBranchResult,
       isAdmin: false
     });
   } else if (fselected !== "" && fcompared !== "" && tselected !== "" && tcompared !== "") {
@@ -691,6 +701,7 @@ app.get('/searchSalesSummary', async (req, res) => {
         message: 'success',
         results: [fselectedResult.data.results,
           fcomparedResult.data.results],
+        hasBranchResult: fselectedResult.data.hasBranchResult,
         isAdmin: false
       });
     } else {
@@ -824,6 +835,15 @@ app.post('/receiveData', async (req, res) => {
   const shopId = req.headers.shopid;
   const receivedSign = req.headers.sign;
 
+  const checkStoreExpire = await executeDb('SELECT ReportLicenseExpire FROM stores WHERE StoreId= ?', [shopId], { fetchAll: true });
+  const expireDate = checkStoreExpire[0].ReportLicenseExpire;
+  let expireDateObj = new Date(expireDate);
+  const currentDate = new Date();
+  // after 1 week
+  expireDateObj.setDate(expireDateObj.getDate() + 7);
+  if (currentDate.getTime() >= expireDateObj.getTime()) {
+    return res.status(410).send('License expired');
+  }
 
   const checkStores = await executeDb('SELECT * FROM stores WHERE AppId = ? and StoreId= ?', [appId,shopId], { fetchAll: true });
   if(checkStores.length === 0) {
@@ -848,7 +868,7 @@ app.post('/receiveData', async (req, res) => {
     try {
       
       const paramsObject = reportArray.find(element => element.hasOwnProperty('Params'));
-      console.log(paramsObject);
+      // console.log(paramsObject);
       const date = paramsObject.Params.ReportDate;
       const uploadDatetime = paramsObject.Params.UploadDateTime;
       const edition = paramsObject.Params.Edition;
@@ -928,7 +948,101 @@ app.post('/receiveData', async (req, res) => {
   }}
 });
 
+app.delete('/user/:userId/:storeId', (req, res) => {
 
+  const userId = req.params.userId;
+  const storeId = req.params.storeId;
+  const deleteQuery = 'DELETE FROM customer_store WHERE cus_id = ? AND StoreId = ?';
+  try {
+    executeDb(deleteQuery, [userId, storeId], { commit: true });
+    res.status(200).json({ message: 'success' });
+  }
+  catch (error) {
+    console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/allocateUser', async (req, res) => {
+  const { userId, storeId } = req.body;
+  const insertQuery = 'INSERT INTO customer_store (cus_id, StoreId) VALUES (?, ?)';
+  try {
+    await executeDb(insertQuery, [userId, storeId], { commit: true });
+    res.status(200).json({ message: 'success' });
+  }
+  catch (error) {
+    console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/createStore', async (req, res) => {
+
+  const { storeName, appId, expireDate, posVersion} = req.body;
+  const insertQuery = 'INSERT INTO stores (StoreName, AppId, ReportLicenseExpire, PosVersion) VALUES (?, ?, ?, ?)';
+  try {
+    await executeDb(insertQuery, [storeName, appId, expireDate, posVersion], { commit: true });
+    res.status(200).json({ message: 'success' });
+  }
+  catch (error) {
+    console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/generateKey', async (req, res) => {
+  const keyData  = req.body.newKey;
+  const insertQuery = 'INSERT INTO activation_keys (key_data) VALUES (?)';
+  try {
+    await executeDb(insertQuery, [keyData], { commit: true });
+    res.status(200).json({ message: 'success' });
+  }
+  catch (error) {
+    console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+app.get('/getKeys', async (req, res) => {
+  const query = 'SELECT * FROM activation_keys';
+  try {
+    const results = await executeDb(query, [], { fetchAll: true });
+    res.status(200).json({ message: 'success', results: results });
+  }
+  catch (error) {
+    console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+app.post('/update-jwt', async (req, res) => {
+  const origin_token = req.headers['authorization'];
+
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+  const token = origin_token.split(' ')[1];
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+    if (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+
+    // 删除 selectedStoreId
+    delete decoded.selectedStoreId;
+
+    // 创建新的 JWT 载荷（payload）
+    const newPayload = { ...decoded };
+    // 生成新的 JWT
+    const newToken = jwt.sign(newPayload, process.env.JWT_SECRET_KEY);
+    res.status(200).json({ success: true, newJwt: newToken });
+  });
+});
+
+  
 
 // 处理登录请求
 app.post('/login', passport.authenticate('local'), async(req, res) => {
@@ -994,7 +1108,7 @@ app.get('/logout', (req, res) => {
 
 app.post("/register", async (req, res) => {
   try {
-    const { activationKey, email, password } = req.body;
+    const { activationKey, email, password, name } = req.body;
 
     const activationQuery = 'SELECT * FROM activation_keys WHERE key_data = ?';
     const activationResults = await executeDb(activationQuery, [activationKey], { fetchAll: true });
@@ -1004,8 +1118,8 @@ app.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const insertQuery = 'INSERT INTO customers (email, password) VALUES (?, ?)';
-    await executeDb(insertQuery, [email, hashedPassword]);
+    const insertQuery = 'INSERT INTO customers (email, password, CustomerName) VALUES (?, ?, ?)';
+    await executeDb(insertQuery, [email, hashedPassword, name]);
 
     const activationDeleteQuery = 'DELETE FROM activation_keys WHERE key_data = ?';
     await executeDb(activationDeleteQuery, [activationKey]);
@@ -1026,7 +1140,7 @@ app.get('/store/:storeId', async (req, res) => {
 
     if (storeResults.length > 0) {
       const storeData = storeResults[0];
-
+      
       // 查询 customers 表和 customer_store 表
       const userQuery = 'SELECT c.cus_id, c.email FROM Customers c INNER JOIN Customer_store cs ON c.cus_id = cs.cus_id WHERE cs.StoreId = ?';
       const userResults = await executeDb(userQuery, [storeId], { fetchAll: true });
@@ -1036,8 +1150,11 @@ app.get('/store/:storeId', async (req, res) => {
         email: result.email,
       })) : [];
 
+      const allUsersQuery = 'SELECT cus_id, email FROM Customers';
+      const allUsersResults = await executeDb(allUsersQuery, [], { fetchAll: true });
+
       // 返回 storeData 和 userData
-      res.json({ storeData, userData });
+      res.json({ storeData:storeData, userData:userData, allUsers: allUsersResults });
     } else {
       res.status(404).json({ error: 'Store not found' });
     }
@@ -1052,6 +1169,8 @@ app.put('/store/:storeId', async (req, res) => {
   const storeId = req.params.storeId;
   // 从请求体中获取更新的字段
   const receivedDate = req.body.rExpiredDate;
+  const storeName = req.body.storeName;
+  const posVersion = req.body.posVersion;
   const rExpiredDate = moment(receivedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
 
   const currentDate = new Date().getTime();
@@ -1060,13 +1179,17 @@ app.put('/store/:storeId', async (req, res) => {
   // 根据日期选择不同的查询
   let query = '';
   if (expiredDate < currentDate) {
-    query = 'UPDATE Stores SET r_expired_date = ?, report_function  = 0 WHERE StoreId = ?';
+    query = 'UPDATE Stores SET ReportLicenseExpire = ? WHERE StoreId = ?';
   } else {
-    query = 'UPDATE Stores SET r_expired_date = ?, report_function  = 1 WHERE StoreId = ?';
+    query = 'UPDATE Stores SET ReportLicenseExpire = ? WHERE StoreId = ?';
   }
+  let updateName = 'UPDATE Stores SET StoreName = ? WHERE StoreId = ?';
+  let updatePosVersion = 'UPDATE Stores SET PosVersion = ? WHERE StoreId = ?';
 
   try {
     await executeDb(query, [rExpiredDate, storeId]);
+    await executeDb(updateName, [storeName, storeId]);
+    await executeDb(updatePosVersion, [posVersion, storeId]);
     res.status(200).json({ message: 'Store updated successfully' });
   } catch (error) {
     console.error('Error querying stores table:', error);
@@ -1107,14 +1230,6 @@ app.get('/getNotifications', async (req, res) => {
     return res.status(500).json({ success: false, message: 'An error occurred while fetching the notifications' });
   }
 });
-
-// // const server = http.createServer(app);
-// const io = socketIO(server, {
-//   cors: {
-//     origin: '*',
-//     methods: ['GET', 'POST'],
-//   },
-// });
 
 async function update_socket_sql(store_id, socket_id) {
   try {
