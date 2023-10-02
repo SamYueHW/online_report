@@ -387,29 +387,35 @@ app.get('/dashboard',(req, res) => {
       
       if(decoded.isAdmin === true){
         
-
-
         if (decoded.username === process.env.ADMIN_EMAIL_LOTUS) {
           query = 'SELECT * FROM stores WHERE Category = "melb"';
+          customer_query = 'SELECT * FROM customers WHERE Category = "melb"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_IPOS) {
           query = 'SELECT * FROM stores WHERE Category = "syd"';
+          customer_query = 'SELECT * FROM customers WHERE Category = "syd"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_QLD) {
           query = 'SELECT * FROM stores WHERE Category = "qld"';
+          customer_query = 'SELECT * FROM customers WHERE Category = "qld"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_ENRICH) {
           query = 'SELECT * FROM stores';
+          customer_query = 'SELECT * FROM customers';
         }
 
         
         const store_result = await executeDb(query, [], { fetchAll: true });
-        // const storeIds = store_result.map(store => store.StoreId);
-        // const c_s_query = `SELECT * FROM customer_store WHERE StoreId IN (${storeIds.join(', ')})`; // 假设字段名为 StoreId
-        // const c_s_results = await executeDb(c_s_query, [], { fetchAll: true });
-        // const customerIds = c_s_results.map(result => result.cus_id);
-        // const customer_query = `SELECT * FROM customers WHERE cus_id IN (${customerIds.join(', ')})`;
-        // const customer_results = await executeDb(customer_query, [], { fetchAll: true });
+        const storeIds = store_result.map(store => store.StoreId);
+        const c_s_query = `
+          SELECT cs.*, c.email 
+          FROM customer_store AS cs 
+          JOIN customers AS c ON cs.cus_id = c.cus_id 
+          WHERE cs.StoreId IN (${storeIds.join(', ')})
+        `; // 假设字段名为 StoreId 和 cus_id
+        const c_s_results = await executeDb(c_s_query, [], { fetchAll: true });
+        
+        const customer_results = await executeDb(customer_query, [], { fetchAll: true });
 
 
 
@@ -421,7 +427,7 @@ app.get('/dashboard',(req, res) => {
         // const store_result = await executeDb(query, { fetchAll: true });
         // const key_query = 'SELECT * FROM activation_keys';
         // const key_result = await executeDb(key_query, [], { fetchAll: true });
-        return res.status(200).json({ success: true, isAdmin: true, store_data: store_result, username: decoded.username });
+        return res.status(200).json({ success: true, isAdmin: true, store_data: store_result, username: decoded.username, customer_store_data: c_s_results, customer_data: customer_results });
       }
       else{
         return res.status(200).json({ success: false, isAdmin: false });
@@ -565,8 +571,8 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       } else {
         paymentSalesWithDate[dateRangeKey] = paymentResults;
       }
-      const storeNamesQuery = 'SELECT StoreName FROM stores WHERE StoreId IN (?)';
-      const storeNamesResults = await executeDb(storeNamesQuery, [storeIds], { fetchAll: true });
+      const storeNamesQuery = 'SELECT StoreName FROM stores WHERE StoreId = ?';
+      const storeNamesResults = await executeDb(storeNamesQuery, [selectedStoreId], { fetchAll: true });
 
       return { status: 200, data: {
       PosVersion: pos_version_results[0].PosVersion,
@@ -826,7 +832,7 @@ app.get('/searchSalesSummary', async (req, res) => {
 //     });
   
 //     store_connection.connect((error) => {
-//       if (error) {
+//       if (del) {
 //         console.error('Error connecting to the database:', error);
 //         res.status(500).send('There was an error connecting to the database');
 //         return;
@@ -843,11 +849,9 @@ app.get('/searchSalesSummary', async (req, res) => {
   
 //         res.json({userId: req.session.userId , data: results, isAdmin: true, username: req.user.email});
 //       });
-  
 //       store_connection.end();
 //     });
 //   }
-  
     
 //   else {
 //     res.status(401).json({ message: 'Not authenticated' });
@@ -855,129 +859,112 @@ app.get('/searchSalesSummary', async (req, res) => {
 // });
 
 app.post('/receiveData', async (req, res) => {
+  try {
+    const reportArray = req.body.Report;
+    const appId = req.headers.appid;
+    const timeStamp = req.headers.timestamp;
+    const nonce = req.headers.nonce;
+    const shopId = req.headers.shopid;
+    const receivedSign = req.headers.sign;
 
-  // console.log('Received encrypted data:', req.body.Report);
+    const checkStoreExpire = await executeDb('SELECT ReportLicenseExpire FROM stores WHERE StoreId= ?', [shopId], { fetchAll: true });
+    const expireDate = checkStoreExpire[0].ReportLicenseExpire;
 
-    // 获取 Report 数组
-  const reportArray = req.body.Report;
-  const appId = req.headers.appid;
-  const timeStamp = req.headers.timestamp;
-  const nonce = req.headers.nonce;
-  const shopId = req.headers.shopid;
-  const receivedSign = req.headers.sign;
-
-  const checkStoreExpire = await executeDb('SELECT ReportLicenseExpire FROM stores WHERE StoreId= ?', [shopId], { fetchAll: true });
-  const expireDate = checkStoreExpire[0].ReportLicenseExpire;
-  let expireDateObj = new Date(expireDate);
-  const currentDate = new Date();
-  // after 1 week
-  expireDateObj.setDate(expireDateObj.getDate() + 7);
-  if (currentDate.getTime() >= expireDateObj.getTime()) {
-    return res.status(410).send('License expired');
-  }
-
-  const checkStores = await executeDb('SELECT * FROM stores WHERE AppId = ? and StoreId= ?', [appId,shopId], { fetchAll: true });
-  if(checkStores.length === 0) {
-    return res.status(400).send('appId and storeId do not match');
-  }
-
-  else {
-  // 创建一个要排序的列表
-  const sList = [appId, timeStamp, nonce, '/receiveData', shopId];
-  sList.sort();
-
-  // 连接排序后的列表
-  const s = sList.join('&');
-
-  // 生成 MD5
-  const hash = crypto.createHash('md5').update(s).digest('hex');
-  //upper case hash
-  const hashUpperCase = hash.toUpperCase();
-
-  // 验证签名
-  if (hashUpperCase === receivedSign) {
-    try {
-      
-      const paramsObject = reportArray.find(element => element.hasOwnProperty('Params'));
-      // console.log(paramsObject);
-      const date = paramsObject.Params.ReportDate;
-      const uploadDatetime = paramsObject.Params.UploadDateTime;
-      const edition = paramsObject.Params.Edition;
-      const shopId = paramsObject.Params.ShopId; 
-      
-      const reportObject = reportArray.find(element => element.hasOwnProperty('ReportData'));
-      const reportData = reportObject.ReportData;
-      
-      const columns = Object.keys(reportData).map(column => `\`${column}\``).join(', ');
-      
-      const options = { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' };
-      const currentDate = new Date().toLocaleDateString('en-CA', options);
-      // 转换 currentDate 到 Date 对象
-      const currentDateObj = new Date(currentDate);
-      const [day, month, year] = date.split('/');
-      const dateObj = new Date(`${year}-${month}-${day}`);
-      const dateMysql = dateObj.toISOString().slice(0, 10);
-
-      if (currentDateObj.getTime() === dateObj.getTime()){
-        const lastupdateQuery = `UPDATE stores SET LastestReportUpdateTime = ? WHERE StoreId = ?`;
-        await executeDb(lastupdateQuery, [uploadDatetime, shopId], { commit: true });
-      }
-
-      //payment records
-      const paymentObject = reportArray.find(element => element.hasOwnProperty('Payment'));
-      const paymentArray = paymentObject.Payment;
-      const deletePaymentQuery = 'DELETE FROM report_payment_records WHERE Date = ? AND StoreId = ?';
-      await executeDb(deletePaymentQuery, [dateMysql, shopId], { commit: true });
-      const insertPaymentQuery = `INSERT INTO report_payment_records (Description, StoreId, Date,Amount) VALUES (?, ?, ?, ?)`;
-      // 遍历paymentArray并插入新记录
-      for (let i = 0; i < paymentArray.length; i++) {
-        const currentPayment = paymentArray[i];
-        for (const [description, amount] of Object.entries(currentPayment)) {
-          await executeDb(insertPaymentQuery, [description, shopId, dateMysql, amount], { commit: true });
-        }
-      }
-      //item sales records
-      const itemSalesObject = reportArray.find(element => element.hasOwnProperty('ItemSales'));
-      const itemSalesArray = itemSalesObject.ItemSales;
-      const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE Date = ? AND StoreId = ?';
-      await executeDb(deleteItemSalesQuery, [dateMysql, shopId], { commit: true });
-      const insertItemSalesQuery = `INSERT INTO report_itemsales_records (Description, StoreId, Date, Amount, Qty) VALUES (?, ?, ?, ?, ?)`;
-      // 遍历itemSalesArray并插入新记录
-      for (let i = 0; i < itemSalesArray.length; i++) {
-        const currentItemSales = itemSalesArray[i];
-        const description = currentItemSales.Description || currentItemSales.Category;
-        const qty = currentItemSales.Qty;
-        const amount = currentItemSales.Amount;
-
-        
-        await executeDb(insertItemSalesQuery, [description, shopId, dateMysql, amount, qty], { commit: true });
-      }
-
-
-
-      if (edition === "Hospitality") {
-        const deleteQuery = 'DELETE FROM report_records_h WHERE Date = ? AND StoreId = ?';
-        await executeDb(deleteQuery, [dateMysql, shopId], { commit: true });
-        const insertQuery = `INSERT INTO report_records_h (${columns}, StoreId, Date) VALUES (${Array(Object.keys(reportData).length + 2).fill('?').join(', ')})`;
-        await executeDb(insertQuery, [...Object.values(reportData), shopId, dateMysql], { commit: true });
-        
-      } else {
-        
-        const deleteQuery = 'DELETE FROM report_records_r WHERE Date = ? AND StoreId = ?';
-        await executeDb(deleteQuery, [dateMysql, shopId], { commit: true });
-        const insertQuery = `INSERT INTO report_records_r (${columns}, StoreId, Date) VALUES (${Array(Object.keys(reportData).length + 2).fill('?').join(', ')})`;
-        await executeDb(insertQuery, [...Object.values(reportData), shopId, dateMysql], { commit: true });
-      }
-      res.status(200).send('Data and signature verified');
-    } catch (err) {
-      console.error("An error occurred:", err);
-      res.status(500).send('Internal Server Error');  
+    let expireDateObj = new Date(expireDate);
+    const currentDate = new Date();
+    expireDateObj.setDate(expireDateObj.getDate() + 7);
+    if (currentDate.getTime() >= expireDateObj.getTime()) {
+      return res.status(410).send('License expired');
     }
+
+    const checkStores = await executeDb('SELECT * FROM stores WHERE AppId = ? and StoreId= ?', [appId, shopId], { fetchAll: true });
+    if (checkStores.length === 0) {
+      return res.status(400).send('appId and storeId do not match');
+    }
+
+    const sList = [appId, timeStamp, nonce, '/receiveData', shopId];
+    sList.sort();
+    const s = sList.join('&');
+    const hash = crypto.createHash('md5').update(s).digest('hex');
+    const hashUpperCase = hash.toUpperCase();
+
+    if (hashUpperCase === receivedSign) {
+      try {
+        const paramsObject = reportArray.find(element => element.hasOwnProperty('Params'));
+        const date = paramsObject.Params.ReportDate;
+        const uploadDatetime = paramsObject.Params.UploadDateTime;
+        const edition = paramsObject.Params.Edition;
+
+        const reportObject = reportArray.find(element => element.hasOwnProperty('ReportData'));
+        const reportData = reportObject.ReportData;
+        const columns = Object.keys(reportData).map(column => `\`${column}\``).join(', ');
+
+        const options = { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' };
+        const currentDate = new Date().toLocaleDateString('en-CA', options);
+        const currentDateObj = new Date(currentDate);
+        const [day, month, year] = date.split('/');
+        const dateObj = new Date(`${year}-${month}-${day}`);
+        const dateMysql = dateObj.toISOString().slice(0, 10);
+
+        if (currentDateObj.getTime() === dateObj.getTime()) {
+          const lastupdateQuery = `UPDATE stores SET LastestReportUpdateTime = ? WHERE StoreId = ?`;
+          await executeDb(lastupdateQuery, [uploadDatetime, shopId], { commit: true });
+        }
+
+        const paymentObject = reportArray.find(element => element.hasOwnProperty('Payment'));
+        const paymentArray = paymentObject.Payment;
+        const deletePaymentQuery = 'DELETE FROM report_payment_records WHERE Date = ? AND StoreId = ?';
+        await executeDb(deletePaymentQuery, [dateMysql, shopId], { commit: true });
+        const insertPaymentQuery = `INSERT INTO report_payment_records (Description, StoreId, Date, Amount) VALUES (?, ?, ?, ?)`;
+        for (let i = 0; i < paymentArray.length; i++) {
+          const currentPayment = paymentArray[i];
+          for (const [description, amount] of Object.entries(currentPayment)) {
+            await executeDb(insertPaymentQuery, [description, shopId, dateMysql, amount], { commit: true });
+          }
+        }
+
+        const itemSalesObject = reportArray.find(element => element.hasOwnProperty('ItemSales'));
+        const itemSalesArray = itemSalesObject.ItemSales;
+        const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE Date = ? AND StoreId = ?';
+        await executeDb(deleteItemSalesQuery, [dateMysql, shopId], { commit: true });
+        const insertItemSalesQuery = `INSERT INTO report_itemsales_records (Description, StoreId, Date, Amount, Qty) VALUES (?, ?, ?, ?, ?)`;
+        for (let i = 0; i < itemSalesArray.length; i++) {
+          const currentItemSales = itemSalesArray[i];
+          const description = currentItemSales.Description || currentItemSales.Category;
+          const qty = currentItemSales.Qty;
+          const amount = currentItemSales.Amount;
+          await executeDb(insertItemSalesQuery, [description, shopId, dateMysql, amount, qty], { commit: true });
+        }
+
+        if (edition === "Hospitality") {
+          const deleteQuery = 'DELETE FROM report_records_h WHERE Date = ? AND StoreId = ?';
+          await executeDb(deleteQuery, [dateMysql, shopId], { commit: true });
+          const insertQuery = `INSERT INTO report_records_h (${columns}, StoreId, Date) VALUES (${Array(Object.keys(reportData).length + 2).fill('?').join(', ')})`;
+          await executeDb(insertQuery, [...Object.values(reportData), shopId, dateMysql], { commit: true });
+        } else {
+          const deleteQuery = 'DELETE FROM report_records_r WHERE Date = ? AND StoreId = ?';
+          await executeDb(deleteQuery, [dateMysql, shopId], { commit: true });
+          const insertQuery = `INSERT INTO report_records_r (${columns}, StoreId, Date) VALUES (${Array(Object.keys(reportData).length + 2).fill('?').join(', ')})`;
+          await executeDb(insertQuery, [...Object.values(reportData), shopId, dateMysql], { commit: true });
+        }
+
+        res.status(200).send('Data and signature verified');
+
+      } catch (err) {
+        console.error("An error occurred in inner block:", err);
+        res.status(500).send('Internal Server Error');  
+      }
+    } else {
+      res.status(401).send('Invalid signature');
+    }
+
+  } catch (err) {
+    console.error("An error occurred in outer block:", err);
+    res.status(500).send('Internal Server Error');
   }
-   else {
-    res.status(401).send('Invalid signature');
-  }}
 });
+
+
 
 app.delete('/user/:userId/:storeId', (req, res) => {
 
@@ -993,6 +980,59 @@ app.delete('/user/:userId/:storeId', (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+app.delete('/deletestore/:storeId', async (req, res) => {
+  const origin_token = req.headers['authorization'];
+
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+  const token = origin_token.split(' ')[1];
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+    if (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    if (decoded.isAdmin) {
+
+      const storeId = req.params.storeId;
+      const  pos_version_query = 'SELECT PosVersion FROM stores WHERE StoreId = ?';
+      const pos_version_results = await executeDb(pos_version_query, [storeId], { fetchAll: true });
+      if (pos_version_results[0].PosVersion === 1) {
+        const deleteReportQuery = 'DELETE FROM report_records_h WHERE StoreId = ?';
+       
+      }
+      else {
+        const deleteReportQuery = 'DELETE FROM report_records_r WHERE StoreId = ?';
+      }
+      const deleteQuery = 'DELETE FROM stores WHERE StoreId = ?';
+      const deletelinkQuery = 'DELETE FROM customer_store WHERE StoreId = ?';
+      const deletePaymentQuery = 'DELETE FROM report_payment_records WHERE StoreId = ?';
+      const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE StoreId = ?';
+      try {
+        await executeDb(deleteQuery, [storeId], { commit: true });
+        await executeDb(deletelinkQuery, [storeId], { commit: true });
+        await executeDb(deletePaymentQuery, [storeId], { commit: true });
+        await executeDb(deleteItemSalesQuery, [storeId], { commit: true });
+        await executeDb(deleteReportQuery, [storeId], { commit: true });
+        res.status(200).json({ message: 'success' });
+      }
+      catch (error) {
+        console.error('Error querying customer_store table:', error);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    }
+    else {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+  });
+  
+});
+
+
 
 app.post('/allocateUser', async (req, res) => {
   const { userId, storeId } = req.body;
@@ -1197,6 +1237,72 @@ app.get('/store/:storeId', async (req, res) => {
   }
 });
 
+app.put('/updateCustomer/:cusId', async (req, res) => {
+  try {
+  const cusId = req.params.cusId;
+  const customer_data = req.body; 
+  const origin_token = req.headers['authorization'];
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+  const token = origin_token.split(' ')[1];
+  jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+    if (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    if (decoded.isAdmin) {
+      const updateQuery = 'UPDATE customers SET email = ?, CustomerName = ?, Address = ?, ContactNumber = ?, Category = ? WHERE cus_id = ?';
+      await executeDb(updateQuery, [customer_data.email, customer_data.CustomerName, customer_data.Address, customer_data.ContactNumber, customer_data.Category, cusId], { commit: true });
+      res.status(200).json({ message: 'success' });
+    }
+    else {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+  });
+  }
+  catch (error) {
+    console.error('Error querying stores or customers and customer_store tables:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.delete('/deleteCustomer/:cus_id', async (req, res) => {
+  try{
+    const cus_id = req.params.cus_id;
+    const origin_token = req.headers['authorization'];
+    // 检查 origin_token 是否存在
+    if (!origin_token) {
+      return res.status(401).json({ success: false, message: 'Authorization header missing' });
+    }
+     // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+    const token = origin_token.split(' ')[1];
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+      if (decoded.isAdmin) {
+        const deleteQuery = 'DELETE FROM customers WHERE cus_id = ?';
+        const deletelinkQuery = 'DELETE FROM customer_store WHERE cus_id = ?';
+        await executeDb(deleteQuery, [cus_id], { commit: true });
+        await executeDb(deletelinkQuery, [cus_id], { commit: true });
+        res.status(200).json({ message: 'success' });
+      }
+      else {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+    });
+  }
+  catch (error) {
+    console.error('Error querying stores or customers and customer_store tables:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
 app.put('/store/:storeId', async (req, res) => {
   // 获取路由参数中的 storeId
   const storeId = req.params.storeId;
@@ -1266,12 +1372,10 @@ app.get('/getNotifications', async (req, res) => {
 
 app.post('/registerCustomer', async (req, res) => {
   try {
-
-    const { email, password, name } = req.body;
+    const { email, password, name, address, contact_number, category} = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const insertQuery = 'INSERT INTO customers (email, password, CustomerName) VALUES (?, ?, ?)';
-    await executeDb(insertQuery, [email, hashedPassword, name]);
-
+    const insertQuery = 'INSERT INTO customers (email, password, CustomerName, Address, ContactNumber, Category) VALUES (?, ?, ?, ?, ?, ?)';
+    await executeDb(insertQuery, [email, hashedPassword, name, address, contact_number, category]);
     res.status(200).json({ message: 'Registration successful' });
   } catch (error) {
     console.log(error);

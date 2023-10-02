@@ -381,6 +381,7 @@ const processDashboardData = (dashboardData) => {
   
 
 
+
   const handleSelectedDateChange = (selectedDate) => {
     if (dateType === "Daily") {
       setSelectedDate(selectedDate);
@@ -493,7 +494,7 @@ const processDashboardData = (dashboardData) => {
         });
 
         if (!response.data.isAdmin) {
-          
+          setIsLoading(false);
           setDashboard_data(response.data.results);
           processDashboardData(response.data.results);
           setHasBranch(response.data.hasBranchResult);
@@ -501,8 +502,9 @@ const processDashboardData = (dashboardData) => {
           // setUser(response.data.username);
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
+          console.log(response.data);
           
-          setIsLoading(false);
+
         } else {
           setIsLoading(false);
           setIsAdmin(response.data.isAdmin);
@@ -516,6 +518,7 @@ const processDashboardData = (dashboardData) => {
     };
 
     fetchData();
+    
   }, []);
 
   useEffect(() => {

@@ -51,6 +51,7 @@ const Mchart = ({ title, data, dateType }) => {
         },
       },
       grid: {
+        left: '20%',  // Increase this value as needed
         top: 70,
         bottom: 50,
       },
@@ -113,7 +114,14 @@ const Mchart = ({ title, data, dateType }) => {
       yAxis: [
         {
           type: 'value',
-        },
+          axisLabel: {
+            formatter: function(value) {
+              if (value >= 1000000) return (value / 1000000).toFixed(2) + 'M';
+              if (value >= 1000) return (value / 1000).toFixed(2) + 'K';
+              return value.toFixed(2);
+            }
+          }
+        }
       ],
       series: seriesData,
     };

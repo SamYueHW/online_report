@@ -3,6 +3,7 @@ import Sidebar from '../../components/sidebar/Sidebarnew';
 import useGetState from '../../hooks/useGetState';
 import moment from 'moment-timezone';
 import axios from 'axios';
+import Chart from '../../components/chart/Chart';
 import { useNavigate } from 'react-router-dom';
 import './dashboardnew.scss';
 
@@ -35,6 +36,7 @@ const CheckStores = () => {
       console.log(error);
     }
   };
+
 
   const handleStoreSelect = async (storeId) => {
     try {
@@ -133,6 +135,16 @@ const CheckStores = () => {
     
   };
 
+  let pieChartData = [];
+
+  if (getBranchPaymentData() && getBranchPaymentData().results.length > 0) {
+    pieChartData = getBranchPaymentData().results.map((payment) => ({
+      name: payment.Description,
+      value: parseFloat(payment.TotalAmount.toFixed(2)),
+    }));
+  }
+  
+
   useEffect(() => {
     const fetchStores = async () => {
         try {
@@ -162,6 +174,8 @@ const CheckStores = () => {
                     
                     setStores(response.data.storeData); // 如果有多个商店，设置商店名称
                     setBranchPaymentData(response.data.branchPaymentResults);
+                    console.log(response.data.branchPaymentResults);
+                    
                     setStoreNames(response.data.branchPaymentResults.storeNames);
                   }
             }
@@ -285,6 +299,9 @@ const CheckStores = () => {
                     ))}
                   </div>
                 </div>
+                {getBranchPaymentData().results && getBranchPaymentData().results.length > 0 && (
+                <Chart title="Payment Method Analytics" data={pieChartData} />
+              )}
               </>
             ) : (
               <div></div>

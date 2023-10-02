@@ -9,6 +9,7 @@ import moment from 'moment-timezone';
 import { CircularProgress } from '@mui/material';
 import Leaderboard from '../../components/leaderboard/Leaderboard';
 import Chart from '../../components/chart/Chart';
+import SalesPieChart from '../../components/chart/SalesPieChart';  
 
 
 const Dashboardnew = () => {
@@ -22,6 +23,7 @@ const Dashboardnew = () => {
   const [hasBranch, setHasBranch] = useState(false);
 
   const [leaderboardData, setleaderboardData] = useState(null);
+  const [SalesPieChartData, setSalesPieChartData] = useState(null);
 
 
   const [paymentData, setPaymentData, getPaymentData] = useGetState(null);
@@ -322,16 +324,16 @@ useEffect(() => {
       });
       // 处理响应结果
       if (response.status === 200) {
-        //console.log(response.data.results);
+
+        setposVersion(response.data.PosVersion);
         setDashboard_data(response.data.results);
-        // processDashboardData(response.data.results);
-        // setposVersion(response.data.posVersion);
         setleaderboardData(response.data.itemSalesResults);
         setPaymentData(response.data.paymentResults);
         setHasBranch(response.data.hasBranchResult);
 
         const { cashAmount, nonCashPayments } = processPaymentData(response.data.paymentResults, selectedDate,tselectedDate);
-   
+        setSalesPieChartData(processItemSalesResults(response.data.itemSalesResults)); 
+        console.log(processItemSalesResults(response.data.itemSalesResults));
        
         setCashAmount(cashAmount);
         setNonCashPayments(nonCashPayments);
@@ -375,7 +377,29 @@ useEffect(() => {
     return processedText;
   };
   
-
+  const processItemSalesResults = (itemSalesResults) => {
+    const firstKey = Object.keys(itemSalesResults)[0];  // 获取第一个键
+    const salesData = itemSalesResults[firstKey];  // 使用第一个键来获取销售数据
+    
+    if (Array.isArray(salesData) && salesData.length === 1) {
+      return [];  // 如果是数组并且没有销售数据，则返回空数组
+    }
+    
+    if (salesData && Object.keys(salesData).length === 0) {
+      return [];  // 如果是对象并且没有销售数据（对象为空），则返回空数组
+    }
+    
+    // 计算总销售额
+    const totalAmount = salesData.reduce((total, item) => total + item.Amount, 0);
+    
+    // 添加占比信息并保留两位小数
+    return salesData.map(item => ({
+      Description: item.Description,
+      Amount: Number(item.Amount.toFixed(2)),
+      Percentage: Number((item.Amount / totalAmount * 100).toFixed(2))
+    }));
+  };
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -405,18 +429,23 @@ useEffect(() => {
           return;
         }
         if (!response.data.isAdmin && response.data.results) {
-          setposVersion(response.data.posVersion);
+          
+          setposVersion(response.data.PosVersion);
           // console.log(response.data.results.NetSales);
           setDashboard_data(response.data.results);
+
          
           //processDashboardData(response.data.results);
 
           setleaderboardData(response.data.itemSalesResults);
           
+          setSalesPieChartData(processItemSalesResults(response.data.itemSalesResults)); 
+
+
+          
           setPaymentData(response.data.paymentResults);
           setHasBranch(response.data.hasBranchResult);
-          // console.log(response.data.hasBranchResult)
-          // console.log(response.data.paymentResults);
+         
           
           const { cashAmount, nonCashPayments } = processPaymentData(response.data.paymentResults, selectedDate,tselectedDate);
 
@@ -425,7 +454,7 @@ useEffect(() => {
           
           setBranchPaymentData(response.data.branchPaymentResults);
 
-
+          console.log(response.data.StoreName);
           setStoreName(response.data.StoreName);
           setUser(response.data.ClientNameResult);
           setLastestUpdate(formatDateTime(response.data.LastestReportUpdateTimeResult));
@@ -481,7 +510,7 @@ useEffect(() => {
 else if (!getIsLoading() && !getIsAdmin() ) {
  
 
-  return (
+return (
 
 <div className="container">
 <div className='sider'>
@@ -660,6 +689,7 @@ else if (!getIsLoading() && !getIsAdmin() ) {
           return <Leaderboard data={dataForLeaderboard.length > 0 ? dataForLeaderboard : []} />;
         })()}
       </div>
+      <SalesPieChart data={SalesPieChartData} />
     </div>
     <div className='payment-summary'>
         <h2>Payment Method Summary</h2>

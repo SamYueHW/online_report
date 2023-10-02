@@ -7,8 +7,6 @@ import { Link } from "react-router-dom";
 import React, { useState, useEffect } from 'react';
 
 
-
-
 const Sidebar = ({ user, onLogout,isOpen,onToggle  }) => {
 
   const handleSidebarToggle = () => {

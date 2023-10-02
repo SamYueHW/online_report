@@ -15,19 +15,14 @@
     padding: 10px;
     margin-bottom: 10px;
     margin-left: 200px;
+    width: 60%;
   }
   
-
-
   .store-id p, .appid p, .store-name p, .pos p{
     display: block;
     color: black;
     user-select: text !important; 
   }
-// body {
-//     overflow: auto;
-//   }
-  
   
   .connected-button,
   .disconnected-button {
@@ -91,9 +86,10 @@
   background: white;
   padding: 20px;
   border-radius: 8px;
-  width: 400px;
+  // width: 400px;
   max-height: 80vh;
   overflow-y: auto;
+  width: auto;
 }
 
 /* 让所有 label 元素垂直排列 */
@@ -117,6 +113,7 @@
   .add-store-button{
     margin-left: 200px;
   }
+
   
   .key-list {
     display: grid;
@@ -132,5 +129,76 @@
     user-select: text !important;
   }
   
+  // .store-buttons {
+  //   display: flex;
+  //   justify-content: start;  /* 按钮靠左对齐 */
+  // }
+  
+  // .edit-button, .delete-store-button {
+  //   margin-right: 10px;  /* 在每个按钮的右侧添加10px的外边距 */
+  // }
+  .delete-store-button{
+    background-color: #ff7782;
+  }
+  
 
+  .store-container {
+    display: flex;
+    justify-content: space-between;
+    
+  }
+  
+  .store-buttons {
+    align-self: flex-start;  /* 如果你希望按钮与上面的内容对齐 */
+    
+  }
+  .customer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #ccc;
+    margin: 5px;
+    padding: 10px;
+  }
+  
+  .customer-info {
+    flex: 1;
+    white-space: nowrap;  /* 防止文本换行 */
+    margin-right: 1rem;
+  }
+  
+  .customer-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .client_btn_container{
+    margin-left: 200px;
+    display: flex;
+    // justify-content: space-between;
+  }
+  
+  .register-button {
+    background-color: rgb(115, 194, 115);
+    color: white;
+    margin-right: 10px;
+  }
+  
+  .customer_list_btn {
+    background-color: rgb(115, 194, 115);
+    color: white;
+  }
+  .search-inputs {
+    display: flex;
+    justify-content: space-between;
+    max-width: 400px;
+    margin: 0 auto;
+    
+    input {
+      width: 45%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+  }
   

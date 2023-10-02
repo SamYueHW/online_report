@@ -32,7 +32,7 @@ const EditStore = () => {
 
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-const [selectedUser, setSelectedUser] = useState(null);
+const [selectedUser, setSelectedUser, getSelectedUser] = useGetState(null);
 const [searchTerm, setSearchTerm] = useState('');
 
 // 模糊搜索电子邮件
@@ -48,14 +48,20 @@ const handleModalClose = () => {
   setIsModalOpen(false);
 };
 
-const handleUserSelect = (email) => {
-  setSelectedUser(email);
+const handleUserSelect = (user) => {
+  setSelectedUser(user);
 };
+useEffect(() => {
+  if (filteredUsers.length === 1) {
+    setSelectedUser(filteredUsers[0]);
+  }
+}, [filteredUsers]);
+
 
 const handleModalSubmit = async () => {
   // 发送请求到服务器，包含选定的 userId 和 storeId
   // 这里假设 selectedUser 包含用户的 ID
-  const userId = selectedUser ? selectedUser.cus_id : null;
+  const userId = getSelectedUser() ? getSelectedUser().cus_id : null;
   if (userId) {
     const response = await axios.post(process.env.REACT_APP_SERVER_URL + '/allocateUser', {
       userId,
@@ -177,6 +183,7 @@ const handleLogout = async () => {
       }).then(response => {
         if (response.status === 200) {
           alert("Update successfully");
+          navigate('/admin-dashboard');
          
         } else {
           alert("Update failed"); // 一般来说，这里不会执行，因为非 200 的状态通常会触发 .catch() 块
@@ -186,9 +193,7 @@ const handleLogout = async () => {
         console.log(error);
       });
   
-      // 更新成功后，重新获取数据
-      await getStoreData();
-      // 更新成功后的处理逻辑
+      
     } catch (error) {
       console.log(error);
       // 更新失败后的处理逻辑
@@ -273,17 +278,18 @@ const handleLogout = async () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <select 
-              className="user-select" style = {{appearance: "auto"}}
-              onChange={(e) => handleUserSelect(JSON.parse(e.target.value))}
-            >
-              {filteredUsers.map(user => (
-                <option key={user.cus_id} value={JSON.stringify(user)}>
-                  {user.email}
-                </option>
-              ))}
-            </select>
+          className="user-select" 
+          style={{appearance: "auto"}}
+          onChange={(e) => handleUserSelect(JSON.parse(e.target.value))}
+        >
+          {filteredUsers.map(user => (
+            <option key={user.cus_id} value={JSON.stringify(user)}>
+              {user.email}
+            </option>
+          ))}
+        </select>
 
-            <p>Selected User: {selectedUser ? selectedUser.email : 'None'}</p>
+        <p>Selected User: {getSelectedUser() ? getSelectedUser().email : 'None'}</p>
             <button onClick={handleModalSubmit}>Submit</button>
             <button onClick={handleModalClose}>Close</button>
           </div>

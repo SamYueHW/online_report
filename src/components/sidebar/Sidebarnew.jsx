@@ -70,10 +70,10 @@ const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, is
           <h3>Messages</h3>
           <span className={styles['message-count']}>{counter}</span>
         </a>
-        <a href="https://buy.stripe.com/test_cN2g1C8113rZ9xKeUU">
+        {/* <a href="https://buy.stripe.com/test_cN2g1C8113rZ9xKeUU">
           <span className="material-icons-sharp">shopping_cart</span>
           <h3>Renew Plan</h3>
-        </a>
+        </a> */}
         <a onClick={() => setIsChangePasswordModalOpen(true)}>
           <span className="material-icons-sharp">vpn_key</span>
           <h3>Change Password</h3>
