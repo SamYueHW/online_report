@@ -217,7 +217,9 @@ passport.deserializeUser(async (cus_id, done) => {
 
 // POST /checkStores
 app.post('/checkStores', (req, res) => {
+  
   const origin_token = req.headers['authorization'];  // 打印所有请求头，以便调试
+
   const token = origin_token.split(' ')[1]; // 获取 JWT Token
   const fselected = req.body.fselected;
   const tselected = req.body.tselected;
@@ -230,6 +232,7 @@ app.post('/checkStores', (req, res) => {
 
     const storeIds = decoded.storeIds; // 从载荷中获取 storeIds
     const selectedStoreId = decoded.selectedStoreId; // 从载荷中获取 selectedStoreId
+
     if (selectedStoreId && storeIds.includes(selectedStoreId)) {
       return res.status(200).json({ success: true});
     }
@@ -271,7 +274,8 @@ app.post('/checkStores', (req, res) => {
             query = `
               SELECT 
                   ${sumColumns_h},
-                  SUM(NetSales) / SUM(TotalTransaction) AS AverageSales
+                  SUM(TotalSales) / SUM(TotalTransaction) AS AverageSales,
+                  SUM(TotalDiscount + VoucherDiscount) AS TotalDiscount
               FROM report_records_h 
               WHERE StoreId = ? AND Date BETWEEN ? AND ?
             `;
@@ -382,15 +386,42 @@ app.get('/dashboard',(req, res) => {
 
       
       if(decoded.isAdmin === true){
-        const query = 'SELECT * FROM stores';
-        const customer_query = 'SELECT * FROM customers';
-        const c_s_query = 'SELECT * FROM customer_store';
-        const customer_results = await executeDb(customer_query, [], { fetchAll: true });
-        const c_s_results = await executeDb(c_s_query, [], { fetchAll: true });
-        const store_result = await executeDb(query, { fetchAll: true });
-        const key_query = 'SELECT * FROM activation_keys';
-        const key_result = await executeDb(key_query, [], { fetchAll: true });
-        return res.status(200).json({ success: true, isAdmin: true, store_data: store_result, keys:key_result });
+        
+
+
+        if (decoded.username === process.env.ADMIN_EMAIL_LOTUS) {
+          query = 'SELECT * FROM stores WHERE Category = "melb"';
+        }
+        else if (decoded.username === process.env.ADMIN_EMAIL_IPOS) {
+          query = 'SELECT * FROM stores WHERE Category = "syd"';
+        }
+        else if (decoded.username === process.env.ADMIN_EMAIL_QLD) {
+          query = 'SELECT * FROM stores WHERE Category = "qld"';
+        }
+        else if (decoded.username === process.env.ADMIN_EMAIL_ENRICH) {
+          query = 'SELECT * FROM stores';
+        }
+
+        
+        const store_result = await executeDb(query, [], { fetchAll: true });
+        // const storeIds = store_result.map(store => store.StoreId);
+        // const c_s_query = `SELECT * FROM customer_store WHERE StoreId IN (${storeIds.join(', ')})`; // 假设字段名为 StoreId
+        // const c_s_results = await executeDb(c_s_query, [], { fetchAll: true });
+        // const customerIds = c_s_results.map(result => result.cus_id);
+        // const customer_query = `SELECT * FROM customers WHERE cus_id IN (${customerIds.join(', ')})`;
+        // const customer_results = await executeDb(customer_query, [], { fetchAll: true });
+
+
+
+        // const query = 'SELECT * FROM stores';
+        // const customer_query = 'SELECT * FROM customers';
+        // const c_s_query = 'SELECT * FROM customer_store';
+        // const customer_results = await executeDb(customer_query, [], { fetchAll: true });
+        // const c_s_results = await executeDb(c_s_query, [], { fetchAll: true });
+        // const store_result = await executeDb(query, { fetchAll: true });
+        // const key_query = 'SELECT * FROM activation_keys';
+        // const key_result = await executeDb(key_query, [], { fetchAll: true });
+        return res.status(200).json({ success: true, isAdmin: true, store_data: store_result, username: decoded.username });
       }
       else{
         return res.status(200).json({ success: false, isAdmin: false });
@@ -489,7 +520,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
         query = `
             SELECT 
                 ${sumColumns_h},
-                SUM(NetSales) / SUM(TotalTransaction) AS AverageSales,
+                SUM(TotalSales) / SUM(TotalTransaction) AS AverageSales,
                 SUM(NetSales) / SUM(TotalPeople) AS PPH
                 
             FROM report_records_h 
@@ -978,10 +1009,10 @@ app.post('/allocateUser', async (req, res) => {
 
 app.post('/createStore', async (req, res) => {
 
-  const { storeName, appId, expireDate, posVersion} = req.body;
-  const insertQuery = 'INSERT INTO stores (StoreName, AppId, ReportLicenseExpire, PosVersion) VALUES (?, ?, ?, ?)';
+  const { storeName, appId, expireDate, posVersion, category} = req.body;
+  const insertQuery = 'INSERT INTO stores (StoreName, AppId, ReportLicenseExpire, PosVersion, Category) VALUES (?, ?, ?, ?, ?)';
   try {
-    await executeDb(insertQuery, [storeName, appId, expireDate, posVersion], { commit: true });
+    await executeDb(insertQuery, [storeName, appId, expireDate, posVersion, category], { commit: true });
     res.status(200).json({ message: 'success' });
   }
   catch (error) {
@@ -1056,14 +1087,15 @@ app.post('/login', passport.authenticate('local'), async(req, res) => {
     const payload = {
       userId: req.user.cus_id,
       username: req.user.email,
-      isAdmin: req.user.email === process.env.ADMIN_EMAIL, // 根据邮箱判断是否为管理员
+      isAdmin: req.user.email === process.env.ADMIN_EMAIL_LOTUS || req.user.email === process.env.ADMIN_EMAIL_IPOS || req.user.email === process.env.ADMIN_EMAIL_QLD || req.user.email === process.env.ADMIN_EMAIL_ENRICH,
+      // 根据邮箱判断是否为管理员
       //get first store id
       storeIds: storeIdsResult.map(item => item.StoreId),
       selectedStoreId: storeIdsResult[0].StoreId
     };
         // 生成 JWT
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
-    if (req.user.email === process.env.ADMIN_EMAIL) {
+    if (req.user.email === process.env.ADMIN_EMAIL_LOTUS || req.user.email === process.env.ADMIN_EMAIL_IPOS || req.user.email === process.env.ADMIN_EMAIL_QLD|| req.user.email === process.env.ADMIN_EMAIL_ENRICH) {
       res.status(200).json({ token: token, isAdmin: true });
     }
     else {
@@ -1075,13 +1107,14 @@ app.post('/login', passport.authenticate('local'), async(req, res) => {
     const payload = {
       userId: req.user.cus_id,
       username: req.user.email,
-      isAdmin: req.user.email === process.env.ADMIN_EMAIL, // 根据邮箱判断是否为管理员
+      isAdmin: req.user.email === process.env.ADMIN_EMAIL_LOTUS || req.user.email === process.env.ADMIN_EMAIL_IPOS || req.user.email === process.env.ADMIN_EMAIL_QLD || req.user.email === process.env.ADMIN_EMAIL_ENRICH,
+// 根据邮箱判断是否为管理员
       storeIds: storeIdsResult.map(item => item.StoreId)
     }
       // 生成 JWT
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
     // 将 JWT 发送给客户端
-    if (req.user.email === process.env.ADMIN_EMAIL) {
+    if (req.user.email === process.env.ADMIN_EMAIL_LOTUS || req.user.email === process.env.ADMIN_EMAIL_IPOS || req.user.email === process.env.ADMIN_EMAIL_QLD || req.user.email === process.env.ADMIN_EMAIL_ENRICH) {
       res.status(200).json({ token: token, isAdmin: true });
     }
     else {
@@ -1231,11 +1264,68 @@ app.get('/getNotifications', async (req, res) => {
   }
 });
 
+app.post('/registerCustomer', async (req, res) => {
+  try {
+
+    const { email, password, name } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const insertQuery = 'INSERT INTO customers (email, password, CustomerName) VALUES (?, ?, ?)';
+    await executeDb(insertQuery, [email, hashedPassword, name]);
+
+    res.status(200).json({ message: 'Registration successful' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'An error occurred while registering the user' });
+  }
+}
+);
+
+app.post('/updatePassword', async (req, res) => {
+  try {
+    const origin_token = req.headers['authorization'];
+
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+  const token = origin_token.split(' ')[1];
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+    if (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    const email = decoded.username;
+    const { oldPassword, newPassword } = req.body;
+    const selectQuery = 'SELECT password FROM customers WHERE email = ?';
+    const results = await executeDb(selectQuery, [email], { fetchAll: true });
+    const hashedPassword = results[0].password;
+    const isPasswordCorrect = await bcrypt.compare(oldPassword, hashedPassword);
+    if (!isPasswordCorrect) {
+      return res.status(400).json({ error: 'Incorrect password' });
+    }
+    else{const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    const updateQuery = 'UPDATE customers SET password = ? WHERE email = ?';
+    await executeDb(updateQuery, [newHashedPassword, email]);
+
+    
+    res.status(200).json({ message: 'Password updated successfully' });
+    }
+  
+  });
+
+   
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'An error occurred while updating the password' });
+  }
+});
+
 async function update_socket_sql(store_id, socket_id) {
   try {
     const selectQuery = 'SELECT StoreId FROM Stores WHERE StoreId = ?';
     const results = await executeDb(selectQuery, [store_id], { fetchAll: true });
-
     if (results.length > 0) {
       const updateQuery = 'UPDATE Stores SET client_socket_id = ?, connection = 1 WHERE StoreId = ?';
       await executeDb(updateQuery, [socket_id, store_id]);
@@ -1245,7 +1335,6 @@ async function update_socket_sql(store_id, socket_id) {
       await executeDb(insertQuery, [store_id, socket_id]);
       console.log(`Inserted record with ID ${store_id}`);
     }
-
     console.log('All queries executed successfully');
   } catch (error) {
     console.error('Error occurred:', error);
@@ -1286,7 +1375,6 @@ function listenserver(server) {
     });
 
     socket.on('sendData', function (data) {
-      
       const callback = userCallbacks[data.requestId];
       
       if (callback) {

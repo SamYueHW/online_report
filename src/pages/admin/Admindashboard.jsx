@@ -8,6 +8,7 @@ import useGetState from '../../hooks/useGetState';
 import { CircularProgress } from '@mui/material';
 import './admindashboard.scss';
 import DatePicker from 'react-datepicker';
+import { set } from "date-fns";
 
 
 const Admindashboard = ({ }) => {
@@ -18,6 +19,7 @@ const Admindashboard = ({ }) => {
     const [searchValue, setSearchValue] = useState('');
     const [selectedConnection, setSelectedConnection] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
 
@@ -28,9 +30,23 @@ const Admindashboard = ({ }) => {
     const [dashboard_data, setDashboard_data, getDashboard_data] = useGetState(null);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
+
 
     const [activationKeys, setActivationKeys] = useState([]); // 存储激活码
     const [isActivationModalOpen, setIsActivationModalOpen] = useState(false); // 控制激活码模态窗口
+
+    const categoryOptions = [
+      { value: "", label: "All (Category)" },
+      { value: "melb", label: "Melb" },
+      { value: "syd", label: "Syd" },
+      { value: "qld", label: "Qld" },
+    ];
+    // Handle category change function
+    const handleCategoryChange = (event) => {
+      setSelectedCategory(event.target.value);
+    };
+
     const generateActivationKey = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let result = '';
@@ -39,33 +55,27 @@ const Admindashboard = ({ }) => {
         }
         return result;
       };
-    const handleGenerateKey = async () => {
-        const newKey = generateActivationKey();
+  
+      const [customerData, setCustomerData] = useState({
+        email: '',
+        name: '',
+        password: '0000', // 默认密码
+    });
+    
+    const handleRegisterCustomer = async () => {
         try {
-            const response = await axios.post(process.env.REACT_APP_SERVER_URL + '/generateKey', {
-            newKey,
-            });
+            const response = await axios.post(process.env.REACT_APP_SERVER_URL + '/registerCustomer', customerData);
             if (response.status === 200) {
-            // 更新激活码列表
-            
-            alert('Activation key generated successfully.');
-            const respone_key = await axios.get(process.env.REACT_APP_SERVER_URL + '/getKeys', { withCredentials: true });
-            if (respone_key){
-                setKeys(respone_key.data.results);
+                alert('Customer registered successfully.');
+                // 可以在这里进行其他操作，例如关闭模态窗口或清除表单
+            } else {
+                alert('Failed to register the customer.');
             }
-            else{
-                alert('Failed to generate the activation key.');
-            }}
-            else{
-                alert('Failed to generate the activation key.');
-            }
-
         } catch (error) {
-            console.log(error);
+            console.error('Error:', error);
+            alert('Failed to register the customer.');
         }
     };
-            
-
 
   const [formData, setFormData] = useState({
     storeName: '',
@@ -93,11 +103,28 @@ const Admindashboard = ({ }) => {
     try {
       // Replace with your server URL and endpoint
       const posVersionNum = formData.posVersion === "Retail" ? 0 : 1;
+      let category;
 
+      const ADMIN_EMAIL_LOTUS = 'admin@lotus.com.au';
+      const ADMIN_EMAIL_IPOS = 'admin@i-pos.com.au';
+      const ADMIN_EMAIL_QLD = 'admin@appliedtechs.com.au';
+
+    
+
+      if (user === ADMIN_EMAIL_LOTUS) {
+        category = 'melb';
+      } else if (user === ADMIN_EMAIL_IPOS) {
+        category = 'syd';
+      } else if (user === ADMIN_EMAIL_QLD) {
+        category = 'qld';
+      } else {
+        category = 'syd';
+      }
       // 创建一个新的对象，包含要发送到服务器的数据
       const dataToSend = {
         ...formData,
         posVersion: posVersionNum,
+        category: category,
       };
   
       const response = await axios.post(process.env.REACT_APP_SERVER_URL + '/createStore', dataToSend);
@@ -154,8 +181,7 @@ const Admindashboard = ({ }) => {
         return () => {
           document.body.style.overflow = 'hidden'; // 或者原来的值
         };
-      }, []);
-    
+      }, []);   
     useEffect(() => {
         const fetchDashboardData = async () => {
           try {
@@ -171,7 +197,8 @@ const Admindashboard = ({ }) => {
                 setDashboard_data(response.data.store_data);
                 setIsLoading(false);
                 setIsAdmin(response.data.isAdmin);
-                setKeys(response.data.keys);
+                setUser(response.data.username);
+               
             }
             else{
                 navigate('/');
@@ -224,27 +251,28 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
     };
     // Filter data based on search value, selected connection, and selected status
     const filteredData = getDashboard_data().filter((item) => {
-    const matchesSearch = String(item.StoreName).toLowerCase().includes(searchValue.toLowerCase());
+      const matchesSearch = String(item.StoreName).toLowerCase().includes(searchValue.toLowerCase());
 
-    const matchesConnection =
-        selectedConnection === "" || String(item.connection) === selectedConnection;
+      const matchesConnection =
+          selectedConnection === "" || String(item.connection) === selectedConnection;
 
-    let status = "";
-    const expiredDate = moment.utc(item.ReportLicenseExpire).local();
-    const today = moment().startOf("day");
+      let status = "";
+      const expiredDate = moment.utc(item.ReportLicenseExpire).local();
+      const today = moment().startOf("day");
 
-    if (expiredDate.isSameOrBefore(today)) {
-        status = "expired";
-    } else if (expiredDate.diff(today, "days") >= 10) {
-        status = "active";
-    } else {
-        status = "almost_expired";
-    }
+      if (expiredDate.isSameOrBefore(today)) {
+          status = "expired";
+      } else if (expiredDate.diff(today, "days") >= 10) {
+          status = "active";
+      } else {
+          status = "almost_expired";
+      }
 
-    const matchesStatus =
-        selectedStatus === "all" || selectedStatus === "" || status === selectedStatus;
+      const matchesStatus =
+          selectedStatus === "all" || selectedStatus === "" || status === selectedStatus;
+      const matchesCategory = selectedCategory === "" || item.Category === selectedCategory; 
 
-    return matchesSearch && matchesConnection && matchesStatus;
+      return matchesSearch && matchesConnection && matchesStatus && matchesCategory;
     });
     const handleEdit = (storeId) => {
         navigate(`/edit-store?store=${storeId}`);
@@ -259,7 +287,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
           ...formData,
           appId: newAppId
         });
-        setIsModalOpen(true);
+        setIsAddStoreModalOpen(true);  // 更改为这个
       };
 
  
@@ -275,7 +303,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
           <div>
           <button className="add-store-button" onClick={openModalWithNewAppId}>Add Store</button>
 
-      {isModalOpen && (
+      {isAddStoreModalOpen && (
         <div className="modal-overlay">
           <div className="modal">
             <h2>Add Store</h2>
@@ -299,13 +327,13 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
               </select>
             </label>
             <button onClick={handleSubmit}>Submit</button>
-            <button onClick={() => setIsModalOpen(false)}>Cancel</button>
+            <button onClick={() => setIsAddStoreModalOpen(false)}>Cancel</button>
           </div>
         </div>
       )}
     </div>
     <div>
-    <button style = {{marginLeft:'200px'}}onClick={() => setIsActivationModalOpen(true)}>Client Activation Key</button>
+    {/* <button style = {{marginLeft:'200px'}}onClick={() => setIsActivationModalOpen(true)}>Client Activation Key</button>
     {isActivationModalOpen && (
   <div className="modal-overlay">
     <div className="modal">
@@ -326,7 +354,27 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
       <button onClick={() => setIsActivationModalOpen(false)}>Close</button>
     </div>
   </div>
-)}
+)} */}
+  <button style = {{marginLeft:'200px'}} onClick={() => setIsModalOpen(true)}>Register Customer</button>
+    {isModalOpen && (
+        <div className="modal-overlay">
+            <div className="modal">
+                <h2>Register Customer</h2>
+                <label>
+                    Email: 
+                    <input type="email" value={customerData.email} 
+                           onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })} />
+                </label>
+                <label>
+                    Name: 
+                    <input type="text" value={customerData.name} 
+                           onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })} />
+                </label>
+                <button onClick={handleRegisterCustomer}>Submit</button>
+                <button onClick={() => setIsModalOpen(false)}>Cancel</button>
+            </div>
+        </div>
+    )}
 
 </div>
 
@@ -346,6 +394,13 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
             </select> */}
             <select  style = {{appearance: "auto"}} value={selectedStatus} onChange={handleStatusChange}>
               {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select style={{ appearance: "auto" }} value={selectedCategory} onChange={handleCategoryChange}>
+              {categoryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

@@ -78,7 +78,13 @@ const Sidebar = ({ user, onLogout,isOpen,onToggle  }) => {
       </div>
       <div className="name-job">
         <div className="profile_name">{user}</div>
-        <div className="job">Web Desginer</div>
+        <div className="job">
+  {user === "admin@lotus.com.au" ? "Admin-Melb" : 
+   user === "admin@i-pos.com.au" ? "Admin-Syd" : 
+   user === "admin@appliedtechs.com.au" ? "Admin-Qld" : 
+   user === "admin@enrich.com.au" ? "Admin-Charles" : "Admin"}
+</div>
+
       </div>
       <i className="bx bx-log-out" onClick={handleLogout}></i>
     </div>

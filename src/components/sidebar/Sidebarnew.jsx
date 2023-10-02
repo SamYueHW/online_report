@@ -5,10 +5,13 @@ import axios from 'axios';
 import {useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
-const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch}) => {
+const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, isChangePasswordModalOpen, setIsChangePasswordModalOpen,}) => {
   const counter = 6;
   const location = useLocation();
   const navigate = useNavigate();
+
+
+  
 
   
   // 使用React状态来控制侧边栏是否显示
@@ -71,6 +74,11 @@ const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch}) =
           <span className="material-icons-sharp">shopping_cart</span>
           <h3>Renew Plan</h3>
         </a>
+        <a onClick={() => setIsChangePasswordModalOpen(true)}>
+          <span className="material-icons-sharp">vpn_key</span>
+          <h3>Change Password</h3>
+        </a>
+
         {hasBranch && (
         <a onClick={handleSelectBranch}>
           <span className="material-icons-sharp">view_cozy</span>

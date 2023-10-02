@@ -57,6 +57,54 @@ const Dashboardnew = () => {
   const isCurrentDate =selectedDate === australiaDate && tselectedDate === australiaDate;
   const [showAll, setShowAll] = useState(false);
 
+
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  // 用于保存表单输入的状态
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: ''
+  });
+  const [confirmPassword, setConfirmPassword] = useState(''); 
+
+  const [passwordMismatchWarning, setPasswordMismatchWarning] = useState(false); // 新增状态
+  
+  // 新增函数，用于检查密码是否匹配
+  const checkPasswordsMatch = () => {
+    if (passwordData.newPassword !== confirmPassword) {
+      setPasswordMismatchWarning(true);
+    } else {
+      setPasswordMismatchWarning(false);
+    }
+  };
+
+  // 处理密码更改表单的提交
+  const handleChangePassword = async () => {
+    try {
+      const response = await axios.post(
+        process.env.REACT_APP_SERVER_URL + '/updatePassword', 
+        passwordData,
+        {
+          headers: {
+            'authorization': `Bearer ${sessionStorage.getItem('jwtToken')}`
+          },
+          withCredentials: true
+        }
+      );
+      if (response.status === 200) {
+        alert('Password changed successfully');
+        setIsChangePasswordModalOpen(false);
+        handleLogout();
+      } else {
+        alert('Failed to change the password');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to change the password');
+    }
+  };
+
+
+
   const [showSidebar, setShowSidebar] = useState(window.innerWidth > 935);
   useEffect(() => {
     const handleResize = () => {
@@ -296,6 +344,7 @@ useEffect(() => {
       }
     } catch (error) {
       console.log(error);
+      navigate('/');
       
     }
   };
@@ -392,7 +441,7 @@ useEffect(() => {
           setDashboard_data(response.data.data);
         }
       } catch (error) {
-        //handleLogout();
+        navigate('/');
         console.log(error);
       }
     };
@@ -409,7 +458,10 @@ useEffect(() => {
    
   }, [tselectedDate, selectedDate]);
   
-
+  useEffect(() => {
+    checkPasswordsMatch();
+  }, [passwordData.newPassword, confirmPassword]);
+  
   useEffect(() => {
     if (getIsUserFetched() && !getIsAdmin() && getDashboard_data()) {
       setIsLoading(false);
@@ -433,7 +485,8 @@ else if (!getIsLoading() && !getIsAdmin() ) {
 
 <div className="container">
 <div className='sider'>
-  <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}/>
+  <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} 
+          setIsChangePasswordModalOpen={setIsChangePasswordModalOpen}/>
 </div>
   <div className='main-layout'>
   <div className='header'>
@@ -473,6 +526,39 @@ else if (!getIsLoading() && !getIsAdmin() ) {
           <button className="ripple" onClick={handleSearch}>Search</button>
           <div className="daily-report">
             <h2>Daily Report</h2>
+
+            {isChangePasswordModalOpen && (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>Change Password</h2>
+        <label>
+          Old Password: <input type="password" style={{ width: '150px' }} value={passwordData.oldPassword} 
+                 onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })} />
+        </label>
+        <label>
+  New Password: <input 
+    type="password" 
+    style={{ width: '150px' }} 
+    value={passwordData.newPassword} 
+    onChange={(e) => {
+      setPasswordData({ ...passwordData, newPassword: e.target.value });
+      checkPasswordsMatch();  // 在这里也检查密码是否匹配
+    }} 
+  />
+</label>
+        <label>
+          Confirm Password: <input type="password" style={{ width: '150px' }} value={confirmPassword} 
+                 onChange={(e) => { 
+                   setConfirmPassword(e.target.value);
+                   checkPasswordsMatch(); // 检查密码是否匹配
+                 }} />
+        </label>
+        {passwordMismatchWarning && <span style={{ color: 'red' }}>Passwords do not match</span>}
+        <button className='change-pass' onClick={handleChangePassword}>Submit</button>
+        <button className='change-pass' onClick={() => setIsChangePasswordModalOpen(false)}>Cancel</button>
+      </div>
+    </div>
+  )}
             <table>
               <thead>
                 <tr>
@@ -505,9 +591,15 @@ else if (!getIsLoading() && !getIsAdmin() ) {
               if (startDate === selectedDate && endDate === tselectedDate && getDashboard_data()[dateRangeKey].length !== 0) {
                 const dataForThisRange = getDashboard_data()[dateRangeKey][0];
                 const keysToRender = showAll ? Object.keys(dataForThisRange) : Array.from(defaultKeysToShow);  // 根据 defaultKeysToShow 筛选
-
-                // 计算 Discount
-                const discount = (dataForThisRange['RedeemPoints'] || 0) + (dataForThisRange['ItemDiscount'] || 0) + (dataForThisRange['DollarDiscount'] || 0)+ (dataForThisRange['VoucherDiscount'] || 0);
+                let discount = 0;
+                if(posVersion === 0){
+                  // 计算 Discount
+                  discount = (dataForThisRange['RedeemPoints'] || 0) + (dataForThisRange['ItemDiscount'] || 0) + (dataForThisRange['DollarDiscount'] || 0)+ (dataForThisRange['VoucherDiscount'] || 0);
+                }
+                else{
+                  discount = (dataForThisRange['TotalDiscount'] || 0) + (dataForThisRange['VoucherDiscount'] || 0);
+                }
+                
 
                 return (
                   <>
@@ -639,148 +731,6 @@ else if (!getIsLoading() && !getIsAdmin() ) {
   );
 }
 
-  else if (!getIsLoading() && getIsAdmin() && getIsUserFetched() && getDashboard_data()) {
-    // Define connection options
-    const connectionOptions = [
-      { value: "", label: "All (Connection)" },
-      { value: "1", label: "Connected" },
-      { value: "0", label: "Disconnected" },
-    ];
-  
-    // Define status options
-    const statusOptions = [
-      { value: "all", label: "All (Status)" }, // Add "all" option
-      { value: "active", label: "Active" },
-      { value: "expired", label: "Expired" },
-      { value: "almost_expired", label: "Almost Expired (within 10 days)" },
-    ];
-  
-    // Handle search input change
-    const handleSearchChange = (event) => {
-      setSearchValue(event.target.value);
-    };
-  
-    // Handle connection change function
-    const handleConnectionChange = (event) => {
-      setSelectedConnection(event.target.value);
-    };
-  
-    // Handle status change function
-    const handleStatusChange = (event) => {
-      setSelectedStatus(event.target.value);
-    };
-  
-    // Filter data based on search value, selected connection, and selected status
-    const filteredData = getDashboard_data().filter((item) => {
-      const matchesSearch = String(item.store_id).includes(searchValue);
-      const matchesConnection =
-        selectedConnection === "" || String(item.connection) === selectedConnection;
-  
-      let status = "";
-      const expiredDate = moment.utc(item.r_expired_date).local();
-      const today = moment().startOf("day");
-  
-      if (expiredDate.isSameOrBefore(today)) {
-        status = "expired";
-      } else if (expiredDate.diff(today, "days") >= 10) {
-        status = "active";
-      } else {
-        status = "almost_expired";
-      }
-  
-      const matchesStatus =
-        selectedStatus === "all" || selectedStatus === "" || status === selectedStatus;
-  
-      return matchesSearch && matchesConnection && matchesStatus;
-    });
-  
-    const handleEdit = (storeId) => {
-      navigate(`/edit-store?store=${storeId}`);
-    };
-  
-    const handleHistory = (storeId) => {
-      navigate(`/store-history?store=${storeId}`);
-    };
-  
-    // Render the component
-    return (
-      <div className="container">
-        <Adminsidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} onToggle={toggleSidebar} />
-        <main>
-        <div className="main-store">
-          <div className="search-bar-container">
-            <input
-              className="search-bar"
-              type="text"
-              value={searchValue}
-              onChange={handleSearchChange}
-              placeholder="Search Store ID"
-            />
-            <select value={selectedConnection} onChange={handleConnectionChange}>
-              {connectionOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select value={selectedStatus} onChange={handleStatusChange}>
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          {filteredData.map((item) => {
-            const expiredDate = moment.utc(item.r_expired_date).local();
-            const today = moment().startOf("day");
-            let status = "";
-  
-            if (expiredDate.isSameOrBefore(today)) {
-              status = "expired";
-            } else if (expiredDate.diff(today, "days") >= 10) {
-              status = "active";
-            } else {
-              status = "almost_expired";
-            }
-  
-            let statusClassName = "";
-            if (status === "active") {
-              statusClassName = "active-status";
-            } else if (status === "almost_expired") {
-              statusClassName = "almost-expired-status";
-            } else if (status === "expired") {
-              statusClassName = "expired-status";
-            }
-  
-            return (
-              <div key={item.store_id} className={`store ${statusClassName}`}>
-                <div className="store-header">
-                  {item.connection === 1 && <button disabled className="connected-button">Connected</button>}
-                  {item.connection === 0 && <button disabled className="disconnected-button">Disconnected</button>}
-                  <p>Client Socket ID: {item.client_socket_id}</p>
-                </div>
-                <p>
-                  Expired Date:{" "}
-                  <span className={`date ${status === "expired" ? "expired" : ""} ${status === "active" ? "active" : ""} ${status === "almost_expired" ? "almost_expired" : ""}`}>
-                    {moment.utc(item.r_expired_date).local().format("DD/MM/YYYY")}
-                  </span>
-                </p>
-                <p>Store ID: {item.store_id}</p>
-                {item.report_function === 1 && (
-                  <button disabled>Online Report</button>
-                  // Add your chart component or other content here
-                )}
-                <button className="edit-button" onClick={() => handleEdit(item.store_id)}>Edit</button>
-                <button className="history-button" onClick={() => handleHistory(item.store_id)}>History</button>
-              </div>
-            );
-          })}
-        </div>
-        </main>
-      </div>
-    );
-  }
 };
 
 export default Dashboardnew;

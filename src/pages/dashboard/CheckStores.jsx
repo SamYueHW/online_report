@@ -226,9 +226,14 @@ const CheckStores = () => {
                         <h3 style={{ textAlign: 'left', marginRight: '20px'}}>{formatKey(key)}</h3>
 
                         <h5>
-                          ${stores[storeName][key] !== null 
-                            ? (stores[storeName][key] === 0 ? '0' : parseFloat(stores[storeName][key]).toFixed(2)) 
-                            : '0'}
+                          {key === 'TotalTransaction' 
+                            ? (stores[storeName][key] !== null 
+                                ? (stores[storeName][key] === 0 ? '0' : stores[storeName][key]) 
+                                : '0') 
+                            : (stores[storeName][key] !== null 
+                                ? (stores[storeName][key] === 0 ? '$0' : '$' + parseFloat(stores[storeName][key]).toFixed(2)) 
+                                : '$0')
+                          }
                         </h5>
 
                       </div>

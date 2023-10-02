@@ -37,6 +37,55 @@ const SalesSummary = () => {
 
   const [dateType, setDateType] = useState("Weekly");
 
+  
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  // 用于保存表单输入的状态
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: ''
+  });
+  const [confirmPassword, setConfirmPassword] = useState(''); 
+
+  const [passwordMismatchWarning, setPasswordMismatchWarning] = useState(false); // 新增状态
+  
+  // 新增函数，用于检查密码是否匹配
+  const checkPasswordsMatch = () => {
+    if (passwordData.newPassword !== confirmPassword) {
+      setPasswordMismatchWarning(true);
+    } else {
+      setPasswordMismatchWarning(false);
+    }
+  };
+
+  // 处理密码更改表单的提交
+  const handleChangePassword = async () => {
+    try {
+      const response = await axios.post(
+        process.env.REACT_APP_SERVER_URL + '/updatePassword', 
+        passwordData,
+        {
+          headers: {
+            'authorization': `Bearer ${sessionStorage.getItem('jwtToken')}`
+          },
+          withCredentials: true
+        }
+      );
+      if (response.status === 200) {
+        alert('Password changed successfully');
+        setIsChangePasswordModalOpen(false);
+        handleLogout();
+      } else {
+        alert('Failed to change the password');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to change the password');
+    }
+  };
+
+
+
+
 
     // 当前日期状态
   const [selectedDate, setSelectedDate] = useState(australiaDate);
@@ -489,7 +538,8 @@ const processDashboardData = (dashboardData) => {
   return (
     <div className="container">
       <div className='sider'>
-        <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}/>
+      <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} 
+          setIsChangePasswordModalOpen={setIsChangePasswordModalOpen}/>
       </div>
       <div className='main-layout'>
       <div className='header'>
@@ -520,6 +570,38 @@ const processDashboardData = (dashboardData) => {
       <div className='left-column'>
         <div className="analyze-table">
           <h1>Sales Summary</h1>
+          {isChangePasswordModalOpen && (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>Change Password</h2>
+        <label>
+          Old Password: <input type="password" style={{ width: '150px' }} value={passwordData.oldPassword} 
+                 onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })} />
+        </label>
+        <label>
+  New Password: <input 
+    type="password" 
+    style={{ width: '150px' }} 
+    value={passwordData.newPassword} 
+    onChange={(e) => {
+      setPasswordData({ ...passwordData, newPassword: e.target.value });
+      checkPasswordsMatch();  // 在这里也检查密码是否匹配
+    }} 
+  />
+</label>
+        <label>
+          Confirm Password: <input type="password" style={{ width: '150px' }} value={confirmPassword} 
+                 onChange={(e) => { 
+                   setConfirmPassword(e.target.value);
+                   checkPasswordsMatch(); // 检查密码是否匹配
+                 }} />
+        </label>
+        {passwordMismatchWarning && <span style={{ color: 'red' }}>Passwords do not match</span>}
+        <button className='change-pass' onClick={handleChangePassword}>Submit</button>
+        <button className='change-pass' onClick={() => setIsChangePasswordModalOpen(false)}>Cancel</button>
+      </div>
+    </div>
+  )}
           <Dropdown selected={dateType} setSelected={setDateType} options={dateOptions} />
           <div className="date">
             <h2>Selected Date</h2>
