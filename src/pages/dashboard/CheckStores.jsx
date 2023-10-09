@@ -73,6 +73,7 @@ const CheckStores = () => {
 
         } 
     } catch (error) {
+      navigate('/');
       console.error('Error selecting the store', error);
     }
   };
@@ -174,7 +175,7 @@ const CheckStores = () => {
                     
                     setStores(response.data.storeData); // 如果有多个商店，设置商店名称
                     setBranchPaymentData(response.data.branchPaymentResults);
-                    console.log(response.data.branchPaymentResults);
+                    
                     
                     setStoreNames(response.data.branchPaymentResults.storeNames);
                   }
@@ -274,7 +275,7 @@ const CheckStores = () => {
       {getBranchPaymentData() && Object.keys(getBranchPaymentData()).length > 0 && (
            <div className='payment-summary'>
           
-            <h2>Branch Sales Summary</h2>
+            <h2>Branches Sales Summary</h2>
             {getBranchPaymentData().results.length > 0 ? (
               <>
                 <div className="store-names">

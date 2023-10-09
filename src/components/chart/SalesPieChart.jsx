@@ -37,7 +37,7 @@ const SalesPieChart = ({ data }) => {
     tooltip: {
       trigger: 'item',
       formatter: function(params) {
-        return `<strong>${params.data.name}</strong><br/>Amount: ${params.data.value}<br/>Percentage: ${params.data.percentage}%`;
+        return `<strong>${params.data.name}</strong><br/>Amount: $${params.data.value}<br/>Percentage: ${params.data.percentage}%`;
       },
     },
     series: [
@@ -69,11 +69,14 @@ const SalesPieChart = ({ data }) => {
             }
           },
           
-        data: data.map(item => ({
-          value: item.Amount,
-          name: item.Description,
-          percentage: item.Percentage,
-        })),
+          data: data
+          .filter(item => item.Amount !== 0)
+          .map(item => ({
+            value: item.Amount,
+            name: item.Description,
+            percentage: item.Percentage,
+          })),
+        
       },
     ],
   };

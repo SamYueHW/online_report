@@ -5,10 +5,11 @@ import axios from 'axios';
 import {useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
-const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, isChangePasswordModalOpen, setIsChangePasswordModalOpen,}) => {
+const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, isChangePasswordModalOpen, setIsChangePasswordModalOpen, posVersion}) => {
   const counter = 6;
   const location = useLocation();
   const navigate = useNavigate();
+
 
 
   
@@ -49,6 +50,8 @@ const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, is
       <div className={styles.top}>
         <div className={styles.logo}>
           <img src="./images/logo.png" alt="Logo" />
+          {/* <span className={styles.cooperationSymbol}>x</span> */}
+          {/* <img src="./images/lotus_logo.png" alt="Logo" /> */}
         </div>
         
         <div className={styles.close} id="close-btn" onClick={() => setShowSidebar(false)}>
@@ -65,30 +68,42 @@ const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, is
           <span className="material-icons-sharp">insights</span>
           <h3>Analytics</h3>
         </a>
-        <a href="#">
-          <span className="material-icons-sharp">mail_outline</span>
-          <h3>Messages</h3>
-          <span className={styles['message-count']}>{counter}</span>
-        </a>
+        
         {/* <a href="https://buy.stripe.com/test_cN2g1C8113rZ9xKeUU">
           <span className="material-icons-sharp">shopping_cart</span>
           <h3>Renew Plan</h3>
         </a> */}
-        <a onClick={() => setIsChangePasswordModalOpen(true)}>
-          <span className="material-icons-sharp">vpn_key</span>
-          <h3>Change Password</h3>
+
+{/* 
+      {posVersion === 0 && (
+        <a href="#">
+          <span className="material-icons-sharp">calendar_view_week</span>
+          <h3>Weekly Sales</h3>
         </a>
+      )} */}
 
         {hasBranch && (
         <a onClick={handleSelectBranch}>
           <span className="material-icons-sharp">view_cozy</span>
-          <h3>Select Branch</h3>
+          <h3>Switch Merchant</h3>
         </a>
       )}
+      <a href="#">
+          <span className="material-icons-sharp">mail_outline</span>
+          <h3>Messages</h3>
+          <span className={styles['message-count']}>{counter}</span>
+        </a>
+
+
+        <a onClick={() => setIsChangePasswordModalOpen(true)} className='wrap-text'>
+          <span className="material-icons-sharp">vpn_key</span>
+          <h3>Change Password</h3>
+        </a>
         <a href="#" onClick={handleLogout}>
           <span className="material-icons-sharp">logout</span>
           <h3>Logout</h3>
         </a>
+    
      
       </div>
     </aside>

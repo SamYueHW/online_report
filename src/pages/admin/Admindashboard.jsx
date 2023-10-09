@@ -8,8 +8,7 @@ import useGetState from '../../hooks/useGetState';
 import { CircularProgress } from '@mui/material';
 import './admindashboard.scss';
 import DatePicker from 'react-datepicker';
-import { set } from "date-fns";
-
+import SalesPieChart from "../../components/chart/SalesPieChart";
 
 const Admindashboard = ({ }) => {
     const navigate = useNavigate();
@@ -455,6 +454,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
       };
 
  
+      
     return (
         <div className="admin-container"  style={{overflow:'auto'}} >
         <Adminsidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} onToggle={toggleSidebar} />
@@ -600,6 +600,14 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
           type="text"
           value={editingCustomer.Address}
           onChange={(e) => setEditingCustomer({ ...editingCustomer, Address: e.target.value })}
+        />
+      </label>
+      <label>
+        Password:
+        <input
+          type="text"
+          
+          onChange={(e) => setEditingCustomer({ ...editingCustomer, Password: e.target.value })}
         />
       </label>
       {/* 可以根据需要添加更多字段 */}

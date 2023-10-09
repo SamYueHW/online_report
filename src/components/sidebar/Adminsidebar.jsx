@@ -49,9 +49,17 @@ const Sidebar = ({ user, onLogout,isOpen,onToggle  }) => {
         <li>
           <a href="/admin-dashboard">
             <i className="bx bx-home"></i>
-            <span className="link_name">Dashboard</span>
+            <span className="link_name">Online Report</span>
           </a>
         </li>
+
+        <li>
+          <a href="/member-store">
+            <i className="bx bx-home"></i>
+            <span className="link_name">Store CRM</span>
+          </a>
+        </li>
+
 
         {/* <li>
           <div className="icon-link online-report"  onClick={handleArrowClick}>

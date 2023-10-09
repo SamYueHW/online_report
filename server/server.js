@@ -1,3 +1,25 @@
+const cluster = require('cluster');
+const { da } = require('date-fns/locale');
+const os = require('os');
+
+if (cluster.isMaster) {
+  // 主进程逻辑
+  const numCPUs = os.cpus().length;
+
+  console.log(`主进程 ${process.pid} 正在运行`);
+  // 根据 CPU 核心数创建工作进程
+  for (let i = 0; i < numCPUs-1; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('exit', (worker) => {
+    console.log(`工作进程 ${worker.process.pid} 已退出`);
+    // 如果需要，可以在这里重启工作进程
+    cluster.fork();
+  });
+
+} else {
+
 const express = require('express');
 const http = require('http');
 const winston = require('winston');
@@ -26,7 +48,7 @@ const fernet = require('fernet');
 const { darkScrollbar } = require('@mui/material');
 
 const cors = require('cors');
-const { Console } = require('console');
+const { Console, group } = require('console');
 const moment = require('moment');
 
 
@@ -60,21 +82,12 @@ app.use(express.text({ type: 'text/plain' }));
 app.use(express.json({ type: 'application/json' }));
 
 
-
-// app.use(cors({
-//   origin: '*', // 指定接受请求的源
-//   credentials: true,  // 允许跨域携带凭证
-// }));
 app.use(cors({
   // origin: 'http://localhost:3000', // 指定接受请求的源
   origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
   credentials: true,  // 允许跨域携带凭证
 }));
 
-
-
-// // 使用中间件处理Cookie和会话
-// app.use(cookieParser());
 
 app.use(express.urlencoded({extended: false}))
 
@@ -88,15 +101,6 @@ app.use(
   })
 );
 
-// // // 在所有其他中间件和路由之前添加此中间件
-// app.use((req, res, next) => {
-//   // 记录请求的方法、URL 和头部
-//   // winston.info(`HTTP Request: ${req.method} ${req.url}`);
-//   // winston.info(`Headers: ${stringify(req.headers)}`);
-//   // 如果需要，你也可以记录请求体
-//   winston.info(`Body: ${toString(req.body)}`);
-//   next(); 
-// });
 
 
 // 创建连接池
@@ -349,7 +353,6 @@ app.post('/selectStore', (req, res) => {
     const newToken = jwt.sign(newPayload, process.env.JWT_SECRET_KEY);
     res.status(200).json({ success: true, newJwt:newToken });
   });
-  
 });
 
 app.get('/checkAccount', (req, res) => {
@@ -361,11 +364,8 @@ app.get('/checkAccount', (req, res) => {
       if (err) {
         return res.status(401).json({ success: false, message: 'Invalid token' });
       }
-
-    
     if(decoded.isAdmin === true){
       return res.status(200).json({ success: true, isAdmin: true });
-
   }})
   
   }catch (error) {
@@ -557,6 +557,19 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       const itemSalesResults = await executeDb(itemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
       const paymentQuery = 'SELECT Description, sum(Amount) as Amount FROM report_payment_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description';
       const paymentResults = await executeDb(paymentQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      let groupItemSalesResults = [];
+      if (pos_version_results[0].PosVersion === 1) {
+        const groupItemSalesQuery = 'SELECT ItemGroup, sum(Amount) as Amount, sum(Qty) as Qty FROM item_group_records_h WHERE StoreId IN (?) AND Date BETWEEN ? AND ? GROUP BY ItemGroup ORDER By Amount DESC';
+        groupItemSalesResults = await executeDb(groupItemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      }
+      const groupItemSalesWithDate= {};
+        
+        if (groupItemSalesResults.length === 0) {
+          groupItemSalesWithDate[dateRangeKey] = {};
+        } else {
+          groupItemSalesWithDate[dateRangeKey] = groupItemSalesResults;
+        }
+      
 
       const itemSalesWithDate= {};
       if (itemSalesResults.length === 0) {
@@ -564,6 +577,9 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       } else {
         itemSalesWithDate[dateRangeKey] = itemSalesResults;
       }
+
+      
+
 
       const paymentSalesWithDate= {};
       if (paymentResults.length === 0) {
@@ -584,6 +600,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       itemSalesResults:itemSalesWithDate,
       paymentResults:paymentSalesWithDate, 
       hasBranchResult: hasBranch,
+      groupItemSalesResults: groupItemSalesWithDate,
 
       // branchPaymentResults:branchPaymentWithDate, 
       isAdmin: false } };
@@ -665,7 +682,7 @@ const fetchRangeData = async (selectedDate, tselectedDate, posVersionQuery, jwtT
 
 
 // 定义一个异步函数
-const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, jwtToken) => {
+const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, jwtToken, dateType) => {
   try {
     const decoded = await jwtVerify(jwtToken, process.env.JWT_SECRET_KEY);
 
@@ -678,6 +695,7 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
       if (storeIds.length > 1) {
         hasBranch = true;
       }
+
       const pos_version_results = await executeDb(posVersionQuery, [selectedStoreId], { fetchAll: true });
       let query;
       if (pos_version_results[0].PosVersion === 1) {
@@ -690,14 +708,30 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
       const dataWithDate = {};
       const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
 
+      const hourlyResult = {};
+      const hourlyQuery = `SELECT SalesHour, Transaction, Amount, Date FROM report_hourlysales_records WHERE StoreId = ? AND Date >= ? AND Date <= ? ORDER BY SalesHour ASC`;
+      const hourlyResults = await executeDb(hourlyQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      
+      const customer_name_query = 'SELECT CustomerName FROM customers WHERE email = ?';
+      const customer_name_results = await executeDb(customer_name_query, [decoded.username], { fetchAll: true });
+      const ClientNameResult = customer_name_results[0].CustomerName;
+      
+      
+      if (hourlyResults.length === 0) {
+        hourlyResult[dateRangeKey] = {};
+      } else {
+        hourlyResult[dateRangeKey] = hourlyResults;
+      }
+      
+
       if (results.length === 0) {
         dataWithDate[dateRangeKey] = {};
       } else {
         dataWithDate[dateRangeKey] = results;
       }
-      
+    
 
-      return { status: 200, data: { message: 'success', results: dataWithDate, hasBranchResult: hasBranch, isAdmin: false } };
+      return { status: 200, data: { message: 'success', results: dataWithDate, hasBranchResult: hasBranch, isAdmin: false, posVersion: pos_version_results[0], hourlyResult: hourlyResult, StoreName:pos_version_results[0].StoreName, LastestReportUpdateTimeResult: pos_version_results[0].LastestReportUpdateTime, ClientNameResult:ClientNameResult } };
     } else {
       return { status: 400, data: { message: 'Invalid store id' } };
     }
@@ -713,34 +747,76 @@ app.get('/searchSalesSummary', async (req, res) => {
   const fcompared = req.query.fcompared;
   const tselected = req.query.tselected;
   const tcompared = req.query.tcompared;
-
+  const dateType = req.query.dateType;
+ 
   const origin_token = req.headers['authorization'];
   const token = origin_token.split(' ')[1];
-
-  const pos_version_query = 'SELECT PosVersion FROM stores WHERE StoreId = ?';
+  const pos_version_query = 'SELECT * FROM stores WHERE StoreId = ?';
   
-
+  
   if (fselected !== "" && tselected !== "" && fcompared === "" && tcompared === "" ) {
-    const result = await fetchSalesSummary(fselected, tselected, pos_version_query, token);
+    const result = await fetchSalesSummary(fselected, tselected, pos_version_query, token, dateType);
+    
+    if (dateType !== 'Hourly') {
     res.status(200).json({
       message: 'success',
       results: [result.data.results],
       hasBranchResult: result.data.hasBranchResult,
-      isAdmin: false
-    });
+      isAdmin: false,
+      posVersion: fselectedResult.data.posVersion,
+      StoreName: result.data.StoreName,
+      LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
+      ClientNameResult: result.data.ClientNameResult
+    });}
+    else {
+      res.status(200).json({
+        message: 'success',
+        results: [result.data.results],
+        hasBranchResult: result.data.hasBranchResult,
+        isAdmin: false,
+        posVersion: fselectedResult.data.posVersion,
+        hourlyResult: [result.data.hourlyResult],
+        StoreName: result.data.StoreName,
+        LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
+        ClientNameResult: result.data.ClientNameResult
+      });
+    }
   } else if (fselected !== "" && fcompared !== "" && tselected !== "" && tcompared !== "") {
-    const fselectedResult = await fetchSalesSummary(fselected,tselected, pos_version_query, token);
-    const fcomparedResult = await fetchSalesSummary(fcompared, tcompared, pos_version_query, token);
-
+    const fselectedResult = await fetchSalesSummary(fselected,tselected, pos_version_query, token, dateType);
+    const fcomparedResult = await fetchSalesSummary(fcompared, tcompared, pos_version_query, token, dateType);
+    
     if (fselectedResult.status===200 && fcomparedResult.status===200) {
+      if (dateType !== 'Hourly') {
 
       res.status(200).json({
         message: 'success',
         results: [fselectedResult.data.results,
           fcomparedResult.data.results],
         hasBranchResult: fselectedResult.data.hasBranchResult,
-        isAdmin: false
-      });
+        isAdmin: false,
+        posVersion: fselectedResult.data.posVersion,
+        StoreName: fselectedResult.data.StoreName,
+        LastestReportUpdateTimeResult: fselectedResult.data.LastestReportUpdateTimeResult
+        ,
+        ClientNameResult: fselectedResult.data.ClientNameResult
+      });}
+      else {
+        
+        res.status(200).json({
+          message: 'success',
+          results: [fselectedResult.data.results,
+            fcomparedResult.data.results],
+          hasBranchResult: fselectedResult.data.hasBranchResult,
+          isAdmin: false,
+          posVersion: fselectedResult.data.posVersion,
+          hourlyResult: [fselectedResult.data.hourlyResult,
+            fcomparedResult.data.hourlyResult],
+            StoreName: fselectedResult.data.StoreName,
+        LastestReportUpdateTimeResult: fselectedResult.data.LastestReportUpdateTimeResult
+        ,
+        ClientNameResult: fselectedResult.data.ClientNameResult
+        });
+      }
     } else {
       res.status(400).json({ message: 'Invalid store id' });
     }
@@ -887,13 +963,24 @@ app.post('/receiveData', async (req, res) => {
     const s = sList.join('&');
     const hash = crypto.createHash('md5').update(s).digest('hex');
     const hashUpperCase = hash.toUpperCase();
+    
+    console.log(req.body);
 
     if (hashUpperCase === receivedSign) {
       try {
+
         const paramsObject = reportArray.find(element => element.hasOwnProperty('Params'));
+        
         const date = paramsObject.Params.ReportDate;
+
         const uploadDatetime = paramsObject.Params.UploadDateTime;
         const edition = paramsObject.Params.Edition;
+        if (paramsObject.Params.Version) {
+          
+          const apiVersion = paramsObject.Params.Version
+          const updateApiVersionQuery = 'UPDATE stores SET ApiVersion = ? WHERE StoreId = ?';
+          await executeDb(updateApiVersionQuery, [apiVersion, shopId], { commit: true });
+        }
 
         const reportObject = reportArray.find(element => element.hasOwnProperty('ReportData'));
         const reportData = reportObject.ReportData;
@@ -922,18 +1009,51 @@ app.post('/receiveData', async (req, res) => {
             await executeDb(insertPaymentQuery, [description, shopId, dateMysql, amount], { commit: true });
           }
         }
+        if (reportArray.find(element => element.hasOwnProperty('HourlySales'))) {
+          const hourlySalesObject = reportArray.find(element => element.hasOwnProperty('HourlySales'));
+          const hourlySalesArray = hourlySalesObject.HourlySales;
+          hourlySalesArray.forEach(async item => {
+            const { SalesHour, Transaction, Amount } = item;
+            try {
+            const delete_query = 'DELETE FROM report_hourlysales_records WHERE Date = ? AND StoreId = ? AND SalesHour = ?';
+            await executeDb(delete_query, [dateMysql, shopId, SalesHour], { commit: true });
+            const query = 'INSERT INTO report_hourlysales_records (StoreId, Date, SalesHour, Transaction, Amount) VALUES (?, ?, ?, ?, ?)';
+            await executeDb(query, [shopId, dateMysql, SalesHour, Transaction, Amount], { commit: true });
+            } catch (error) {
+              console.error("An error occurred:", error);
+            }
+          });   
+        }
+        
+        if (reportArray.find(element => element.hasOwnProperty('ItemGroupSales'))){
+          const itemGroupSalesObject = reportArray.find(element => element.hasOwnProperty('ItemGroupSales'));
+          const itemGroupSalesArray = itemGroupSalesObject.ItemGroupSales;
+          itemGroupSalesArray.forEach(async item => {
+            const { ItemGroup, Amount, Qty } = item;
+            try {
+              const delete_query = 'DELETE FROM item_group_records_h WHERE Date = ? AND StoreId = ?';
+              await executeDb(delete_query, [dateMysql, shopId], { commit: true });
+              const query = 'INSERT INTO item_group_records_h (StoreId, Date, ItemGroup, Amount, Qty) VALUES (?, ?, ?, ?, ?)';
+              await executeDb(query, [shopId, dateMysql, ItemGroup, Amount, Qty], { commit: true });
+            } catch (error) {
+              console.error("An error occurred:", error);
+            }
+          });
+        }
 
         const itemSalesObject = reportArray.find(element => element.hasOwnProperty('ItemSales'));
         const itemSalesArray = itemSalesObject.ItemSales;
         const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE Date = ? AND StoreId = ?';
         await executeDb(deleteItemSalesQuery, [dateMysql, shopId], { commit: true });
-        const insertItemSalesQuery = `INSERT INTO report_itemsales_records (Description, StoreId, Date, Amount, Qty) VALUES (?, ?, ?, ?, ?)`;
+        const insertItemSalesQuery = `INSERT INTO report_itemsales_records (Description, StoreId, Date, Amount, Qty, Cost) VALUES (?, ?, ?, ?, ?, ?)`;
         for (let i = 0; i < itemSalesArray.length; i++) {
           const currentItemSales = itemSalesArray[i];
+          
           const description = currentItemSales.Description || currentItemSales.Category;
           const qty = currentItemSales.Qty;
           const amount = currentItemSales.Amount;
-          await executeDb(insertItemSalesQuery, [description, shopId, dateMysql, amount, qty], { commit: true });
+          const cost = currentItemSales.Cost || 0;
+          await executeDb(insertItemSalesQuery, [description, shopId, dateMysql, amount, qty, cost], { commit: true });
         }
 
         if (edition === "Hospitality") {
@@ -947,7 +1067,6 @@ app.post('/receiveData', async (req, res) => {
           const insertQuery = `INSERT INTO report_records_r (${columns}, StoreId, Date) VALUES (${Array(Object.keys(reportData).length + 2).fill('?').join(', ')})`;
           await executeDb(insertQuery, [...Object.values(reportData), shopId, dateMysql], { commit: true });
         }
-
         res.status(200).send('Data and signature verified');
 
       } catch (err) {
@@ -1029,7 +1148,6 @@ app.delete('/deletestore/:storeId', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
   });
-  
 });
 
 
@@ -1254,8 +1372,18 @@ app.put('/updateCustomer/:cusId', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
     if (decoded.isAdmin) {
-      const updateQuery = 'UPDATE customers SET email = ?, CustomerName = ?, Address = ?, ContactNumber = ?, Category = ? WHERE cus_id = ?';
-      await executeDb(updateQuery, [customer_data.email, customer_data.CustomerName, customer_data.Address, customer_data.ContactNumber, customer_data.Category, cusId], { commit: true });
+      let updateQuery;
+      if (customer_data.Password === '') {
+        const hashedPassword = await bcrypt.hash(customer_data.Password, 10);
+        updateQuery = 'UPDATE customers SET email = ?, CustomerName = ?, Address = ?, ContactNumber = ?, Category = ?, Password = ? WHERE cus_id = ?';
+        await executeDb(updateQuery, [customer_data.email, customer_data.CustomerName, customer_data.Address, customer_data.ContactNumber, customer_data.Category, hashedPassword, cusId], { commit: true });
+      }
+      else {
+        updateQuery = 'UPDATE customers SET email = ?, CustomerName = ?, Address = ?, ContactNumber = ?, Category = ? WHERE cus_id = ?';
+        await executeDb(updateQuery, [customer_data.email, customer_data.CustomerName, customer_data.Address, customer_data.ContactNumber, customer_data.Category, cusId], { commit: true });
+      }
+
+      
       res.status(200).json({ message: 'success' });
     }
     else {
@@ -1513,9 +1641,4 @@ httpsServer.listen(5050, () => {
   console.log('HTTPS Server running on port 5050');
 });
 
-// listenserver(server);
-
-// // 启动服务器
-// server.listen(3000, () => {
-//   console.log('Server is running on port 3000');
-// });
+}

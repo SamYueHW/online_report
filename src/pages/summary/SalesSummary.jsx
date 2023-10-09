@@ -10,6 +10,10 @@ import { CircularProgress } from '@mui/material';
 
 import Dropdown from '../../components/dropdown/Dropdown';
 import Mchart from '../../components/mchart/Mchart';
+import PeakLineChart from '../../components/linechart/PeakLineChart';
+import "./SalesSummary.scss";
+import { el } from 'date-fns/locale';
+
 
 const SalesSummary = () => {
   const [user, setUser, getUser] = useGetState(null);
@@ -19,6 +23,7 @@ const SalesSummary = () => {
   const [isLoading, setIsLoading, getIsLoading] = useGetState(true);
   const [dashboard_data, setDashboard_data, getDashboard_data] = useGetState(null);
   const [NetSalesByDate, setNetSalesByDate] = useState({xAxisData1: [],yAxisData1: [],xAxisData2: [],yAxisData2: [],});
+  const [PeakLineChartData, setPeakLineChartData] = useState([[],[]]);
 
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,13 +35,16 @@ const SalesSummary = () => {
   const [comparedTotalNetSalesDateRange, setComparedTotalNetSalesDateRange] = useState(null);
 
   const [hasBranch, setHasBranch] = useState(false);
-
+  const [posVersion, setPosVersion] = useState(null);
+  const [storeName, setStoreName] = useState(null);
+  const [lastestUpdate, setLastestUpdate] = useState(null);
+  const [hourlyRangeData, setHourlyRangeData] = useState(null);
+  
     // 设置澳大利亚悉尼时区的当前日期
   const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
-  const dateOptions = ["Daily", "Weekly", "Monthly", "Yearly"];
+  const dateOptions = ["Hourly","Daily", "Weekly", "Monthly"];
 
-  const [dateType, setDateType] = useState("Weekly");
-
+  const [dateType, setDateType] = useState("Hourly");
   
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   // 用于保存表单输入的状态
@@ -83,16 +91,25 @@ const SalesSummary = () => {
     }
   };
 
+const australiaMoment = moment.tz('Australia/Sydney'); // 获取澳大利亚悉尼时区的当前日期和时间
+
+// 设置这一周的周一和周日
+const thisMonday = australiaMoment.clone().startOf('isoWeek').format('YYYY-MM-DD');
+const thisSunday = australiaMoment.clone().endOf('isoWeek').format('YYYY-MM-DD');
+
+// 设置上一周的周一和周日
+const lastMonday = australiaMoment.clone().subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+const lastSunday = australiaMoment.clone().subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
 
 
+const [selectedDate, setSelectedDate] = useState(australiaDate);
+const [tselectedDate, setTSelectedDate] = useState(australiaDate);
+// const [comparedDate, setComparedDate] = useState(lastMonday);
+// const [tcomparedDate, setTComparedDate] = useState(lastSunday);
+const [comparedDate, setComparedDate] = useState(null);
+const [tcomparedDate, setTComparedDate] = useState(null);
 
 
-    // 当前日期状态
-  const [selectedDate, setSelectedDate] = useState(australiaDate);
-  const [tselectedDate, setTSelectedDate] = useState(australiaDate);
-  const [comparedDate, setComparedDate] = useState('');
-  const [tcomparedDate, setTComparedDate] = useState('');
-  
 
   // 判断 selectedDate 是否与当前日期相匹配
   const isCurrentDate =selectedDate === australiaDate && tselectedDate === australiaDate;
@@ -100,20 +117,84 @@ const SalesSummary = () => {
   const formatDate = (dateString) => {
     return moment(new Date(dateString)).format('YYYY-MM-DD');
   };
+  const formatDate2 = (dateString) => {
+    return moment(new Date(dateString)).format('DD/MM/YYYY');
+  };
 
 
-  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 820);
+  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 935);
   useEffect(() => {
     const handleResize = () => {
-      setShowSidebar(window.innerWidth > 820);
+      setShowSidebar(window.innerWidth > 935);
     };
-
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+  const processHourlyData = (hourlyData) => {
+    
+    let seriesData1 = [];
+    let seriesData2 = [];
+  
+    // 创建一个基础数组，包含从0点到23点的数据
+    const baseHours = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      amount: 0,
+      transaction: 0
+    }));
+  
+    if (Array.isArray(hourlyData)) {
+      hourlyData.forEach(dashboardData => {
+        Object.entries(dashboardData).forEach(([dateRange, data]) => {
+          if (Array.isArray(data) && data.length > 0) {
+            const [startDate, endDate] = dateRange.split(' - ');
+  
+            // 对比日期并获取相应数据
+            if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
+              seriesData1 = [...baseHours]; // 初始化为基础小时
+              data.forEach(record => {
+                seriesData1[record.SalesHour] = {
+                  hour: record.SalesHour,
+                  amount: record.Amount,
+                  transaction: record.Transaction
+                };
+              });
+            }
+            if (startDate === formatDate(comparedDate) && endDate === formatDate(tcomparedDate)) {
+              seriesData2 = [...baseHours]; // 初始化为基础小时
+              data.forEach(record => {
+                seriesData2[record.SalesHour] = {
+                  hour: record.SalesHour,
+                  amount: record.Amount,
+                  transaction: record.Transaction
+                };
+              });
+            }
+          }
+        });
+      });
+    }
+    let Data1Date;
+    let Data2Date;
+    if(selectedDate === australiaDate){
+       Data1Date = "Today";
+    }else{
+      
+        Data1Date = formatDate2(selectedDate);
+    }
+    //if compare date equal to yesterday
 
+    if(comparedDate === moment(australiaDate).subtract(1, 'days').format('YYYY-MM-DD')){
+        Data2Date = "Yesterday";
+    }else{
+        Data2Date = formatDate2(comparedDate);
+    }
+    // console.log(Data1Date);
+    setPeakLineChartData([seriesData1, seriesData2,[Data1Date,Data2Date]]);
+    
+  };
+  
     
 const processDashboardData = (dashboardData) => {
   let selectedTotalNetSales = 0;
@@ -125,14 +206,19 @@ const processDashboardData = (dashboardData) => {
   let y2Data = [];
   try{
     if (Array.isArray(dashboardData)) {
+    
     dashboardData.forEach(dashboardData => {
       Object.entries(dashboardData).forEach(([dateRange, data]) => {
         if (Array.isArray(data)) {
+         
+      
         const [startDate, endDate] = dateRange.split(' - ');
-  
+        
         // 对比日期并获取相应数据
         if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
+          
           setSelectedTotalNetSalesDateRange({ startDate, endDate });
+          
           // 遍历 data 数组，累加 TotalNetSales
           data.forEach(({ TotalNetSales }) => {
             selectedTotalNetSales += TotalNetSales;
@@ -151,16 +237,65 @@ const processDashboardData = (dashboardData) => {
             const dateKey = new Date(SalesDate).toLocaleDateString();
             totalNetSalesMap.set(dateKey, TotalNetSales);
           });          
-          if (dateType==="Weekly"){
+          const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          if (dateType==="Daily"){
+            let i = 0; // 初始化一个索引来跟踪当前的星期天
             for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+              
               const dateParts = SalesDate.split('/');
               const formattedDate = `${dateParts[1]}/${dateParts[0]}/${dateParts[2]}`;
-              
-              x1Data.push(formattedDate); // 使用格式化后的日期
+               
+              const weekDay = weekDays[i];
+              // 在 x1Data 中加入日期和星期缩写
+              x1Data.push(`${formattedDate} (${weekDay})`);
+
+              // x1Data.push(formattedDate); // 使用格式化后的日期
               y1Data.push(parseFloat(sales.toFixed(2)));
+              i++;
             }
           }
-          else if (dateType === "Yearly") {
+          else if (dateType === "Weekly") {
+            const weeklySales = new Map();
+            let weekCount = 1;
+          
+            let currentWeekTotal = 0;
+            let dayCount = 0;
+            let startDateOfWeek = null;
+            let endDateOfWeek = null;
+          
+            for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+              if (dayCount === 0) {
+                startDateOfWeek = SalesDate;  // 记录每周的开始日期
+              }
+              currentWeekTotal += sales;
+              dayCount++;
+              endDateOfWeek = SalesDate;  // 更新每周的结束日期
+          
+              if (dayCount === 7) {
+                const weekLabel = `${startDateOfWeek} - ${endDateOfWeek} (Week ${weekCount})`;
+                weeklySales.set(weekLabel, currentWeekTotal);
+          
+                currentWeekTotal = 0;
+                dayCount = 0;
+                weekCount++;
+              }
+            }
+          
+            if (dayCount > 0) {
+              const weekLabel = `${startDateOfWeek} - ${endDateOfWeek} (Week ${weekCount})`;
+              weeklySales.set(weekLabel, currentWeekTotal);
+            }
+          
+            for (const [weekLabel, sales] of weeklySales.entries()) {
+              x1Data.push(weekLabel);
+              y1Data.push(parseFloat(sales.toFixed(2)));
+              console.log(x1Data);
+            }
+          }
+          
+          
+
+          else if (dateType === "Monthly") {
             const monthlySales = new Map();
             let year = null;
           
@@ -185,6 +320,7 @@ const processDashboardData = (dashboardData) => {
               x1Data.push(`${monthNames[month]} ${year}`);  // 在这里加上了年份
               y1Data.push(parseFloat(sales.toFixed(2)));
             }
+            console.log(x1Data);
           }
 
         };
@@ -210,55 +346,61 @@ const processDashboardData = (dashboardData) => {
           });          
 
       
-          
-          if (dateType==="Weekly"){
+          const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          if (dateType==="Daily"){
+            let i = 0; // 初始化一个索引来跟踪当前的星期天
             for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
               
                 const dateParts = SalesDate.split('/');
                 const formattedDate = `${dateParts[1]}/${dateParts[0]}/${dateParts[2]}`;
                 
-                x2Data.push(formattedDate); // 使用格式化后的日期
+                const weekDay = weekDays[i];
+              // 在 x1Data 中加入日期和星期缩写
+                x2Data.push(`${formattedDate} (${weekDay})`);
                 y2Data.push(parseFloat(sales.toFixed(2)));
+                i++;
             }
             }
-          //  else if (dateType === "Monthly") {
-          //   let weeklySales = 0;
-          //   let weekStart = null;
-          //   let weekEnd = null;
-          //   let dayCounter = 0;
-          
-          //   for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
-          //     const dateObject = new Date(SalesDate);
-          //     const dayOfWeek = dateObject.getDay(); // 获取星期几（0 = 星期日, 1 = 星期一, ...）
-          
-          //     // 如果是周一，设置 weekStart
-          //     if (dayOfWeek === 1) {
-          //       weekStart = SalesDate;
-          //     }
-          //     // 累加本周的销售额
-          //     weeklySales += sales;
-          
-          //     // 如果是周日，设置 weekEnd 并保存数据
-          //     if (dayOfWeek === 0) {
-          //       weekEnd = SalesDate;
-          //       x1Data.push(`${weekStart} - ${weekEnd}`);
-          //       y1Data.push(weeklySales);
-          //       // 重置相关变量
-          //       weeklySales = 0;
-          //       weekStart = null;
-          //       weekEnd = null;
-          //     }
-          //     dayCounter++;
-          
-          //     // 如果到达最后一天但还没有到周日
-          //     if (dayCounter === totalNetSalesMap.size && dayOfWeek !== 0) {
-          //       weekEnd = SalesDate;
-          //       x1Data.push(`${weekStart} - ${weekEnd}`);
-          //       y1Data.push(weeklySales);
-          //     }
-          //   }
-          // }
-          else if (dateType === "Yearly") {
+            else if (dateType === "Weekly") {
+              const weeklySales = new Map();
+              let weekCount = 1;
+            
+              let currentWeekTotal = 0;
+              let dayCount = 0;
+              let startDateOfWeek = null;
+              let endDateOfWeek = null;
+            
+              for (const [SalesDate, sales] of totalNetSalesMap.entries()) {
+                if (dayCount === 0) {
+                  startDateOfWeek = SalesDate;  // 记录每周的开始日期
+                }
+                currentWeekTotal += sales;
+                dayCount++;
+                endDateOfWeek = SalesDate;  // 更新每周的结束日期
+            
+                if (dayCount === 7) {
+                  const weekLabel = `${startDateOfWeek} - ${endDateOfWeek} (Week ${weekCount})`;
+                  weeklySales.set(weekLabel, currentWeekTotal);
+            
+                  currentWeekTotal = 0;
+                  dayCount = 0;
+                  weekCount++;
+                }
+              }
+            
+              if (dayCount > 0) {
+                const weekLabel = `${startDateOfWeek} - ${endDateOfWeek} (Week ${weekCount})`;
+                weeklySales.set(weekLabel, currentWeekTotal);
+              }
+            
+              for (const [weekLabel, sales] of weeklySales.entries()) {
+                x2Data.push(weekLabel);
+                y2Data.push(parseFloat(sales.toFixed(2)));
+              }
+              
+            }
+            
+          else if (dateType === "Monthly") {
             const monthlySales = new Map();
             let year = null;
           
@@ -290,8 +432,9 @@ const processDashboardData = (dashboardData) => {
     });
     setSelectedTotalNetSales(selectedTotalNetSales);
     setComparedTotalNetSales(comparedTotalNetSales);
+    console.log({xAxisData1: x1Data, yAxisData1: y1Data, xAxisData2: x2Data, yAxisData2: y2Data});
 
-    setNetSalesByDate({xAxisData1: x1Data,yAxisData1: y1Data,xAxisData2: x2Data,yAxisData2: y2Data,});
+    setNetSalesByDate({xAxisData1: x1Data, yAxisData1: y1Data, xAxisData2: x2Data, yAxisData2: y2Data,});
 
   }}
   catch (error) {
@@ -321,7 +464,8 @@ const processDashboardData = (dashboardData) => {
       fselected: selectedDate,
       tselected: tselectedDate, // 你可以根据需要修改这个值
       fcompared: comparedDate,
-      tcompared: tcomparedDate // 你可以根据需要修改这个值
+      tcompared: tcomparedDate, // 你可以根据需要修改这个值
+      dateType: dateType
     }
 
     // 发送 GET 请求
@@ -344,7 +488,19 @@ const processDashboardData = (dashboardData) => {
         setHasBranch(response.data.hasBranchResult);
         
         processDashboardData(response.data.results);
-     
+        
+        processHourlyData(response.data.hourlyResult);
+        if(response.data.hourlyResult){
+        const dateRanges = response.data.hourlyResult.map((item) => {
+          const key = Object.keys(item)[0];
+          const [startDate, endDate] = key.split(' - ');
+          return { startDate, endDate };
+        });
+        
+        setHourlyRangeData(dateRanges);
+      }
+        
+        
         // setUser(response.data.username);
         setIsAdmin(response.data.isAdmin);
         setIsUserFetched(true);
@@ -383,24 +539,29 @@ const processDashboardData = (dashboardData) => {
 
 
   const handleSelectedDateChange = (selectedDate) => {
-    if (dateType === "Daily") {
+
+     if (dateType === "Hourly") {
       setSelectedDate(selectedDate);
       setTSelectedDate(selectedDate);
     }
-    else if (dateType === "Weekly") {
+    else if (dateType === "Daily") {
       const startOfWeek = moment(selectedDate).startOf('isoWeek').format('YYYY-MM-DD');
       const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
       setSelectedDate(startOfWeek);
       setTSelectedDate(endOfWeek);
     } 
-    else if (dateType === "Monthly") {
-      const startOfMonth = moment(selectedDate).startOf('month').format('YYYY-MM-DD');
-      const endOfMonth = moment(selectedDate).endOf('month').format('YYYY-MM-DD');
-      setSelectedDate(startOfMonth);
-      setTSelectedDate(endOfMonth);
+    else if (dateType === "Weekly") {
+      
+      const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
+      
+      const fourWeeksAgo = moment(endOfWeek).subtract(3, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+    
+      setSelectedDate(fourWeeksAgo);
+      setTSelectedDate(endOfWeek);
     }
+    
 
-    else if (dateType === "Yearly") {
+    else if (dateType === "Monthly") {
       const startOfYear = moment(selectedDate).startOf('year').format('YYYY-MM-DD');
       const endOfYear = moment(selectedDate).endOf('year').format('YYYY-MM-DD');
       setSelectedDate(startOfYear);
@@ -408,26 +569,51 @@ const processDashboardData = (dashboardData) => {
     }
   };
   
+  function formatDateTime(isoString) {
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // 月份从0开始
+    const year = date.getFullYear();
+    
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
   
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 如果小时为0，则转换为12
+  
+    return `${day}/${month}/${year} ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  }
+
+
   const handleComparedDateChange = (selectedDate) => {
     let comparedStartDate = "";
     let comparedEndDate = "";
   
-    if (dateType === "Daily") {
-      comparedStartDate = moment(selectedDate).subtract(1, 'days').format('YYYY-MM-DD');
+
+    if (dateType === "Hourly") {
+      comparedStartDate = moment(selectedDate).subtract(0, 'days').format('YYYY-MM-DD');
       comparedEndDate = comparedStartDate;
+    }
+
+    else if (dateType === "Daily") {
+      comparedStartDate = moment(selectedDate).subtract(0, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+      comparedEndDate = moment(selectedDate).subtract(0, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
     } 
     else if (dateType === "Weekly") {
-      comparedStartDate = moment(selectedDate).subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
-      comparedEndDate = moment(selectedDate).subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
-    } 
-    else if (dateType === "Monthly") {
-      comparedStartDate = moment(selectedDate).subtract(1, 'months').startOf('month').format('YYYY-MM-DD');
-      comparedEndDate = moment(selectedDate).subtract(1, 'months').endOf('month').format('YYYY-MM-DD');
+      // 获取selectedDate所在周的周一作为一周的开始
+       
+      const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
+      
+      const fourWeeksAgo = moment(endOfWeek).subtract(3, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+    
+      comparedStartDate = fourWeeksAgo;
+      comparedEndDate = endOfWeek;
     }
-    else if (dateType === "Yearly") {
-      comparedStartDate = moment(selectedDate).subtract(1, 'years').startOf('year').format('YYYY-MM-DD');
-      comparedEndDate = moment(selectedDate).subtract(1, 'years').endOf('year').format('YYYY-MM-DD');
+    
+    else if (dateType === "Monthly") {
+      comparedStartDate = moment(selectedDate).subtract(0, 'years').startOf('year').format('YYYY-MM-DD');
+      comparedEndDate = moment(selectedDate).subtract(0, 'years').endOf('year').format('YYYY-MM-DD');
     }
     setComparedDate(comparedStartDate);
     setTComparedDate(comparedEndDate);
@@ -438,29 +624,34 @@ const processDashboardData = (dashboardData) => {
   useEffect(() => {
     // 这里是初始化日期的逻辑
     processDashboardData([]);
-
+    // setComparedDate(null);
+    //   setTComparedDate(null);
+    
+    
     // 根据 dateType 来初始化日期
-    if (dateType === "Daily") {
+    // if (dateType === "Daily") {
+    //   handleSelectedDateChange(australiaDate);
+    //   handleComparedDateChange();
+    // } 
+    if (dateType === "Hourly") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange();
-
+      handleComparedDateChange(null);
+      
+    }
+    else if (dateType === "Daily") {
+      handleSelectedDateChange(australiaDate);
+      handleComparedDateChange(null);
 
     } 
     else if (dateType === "Weekly") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange();
-
-    } 
-    else if (dateType === "Monthly") {
-      handleSelectedDateChange(australiaDate);
-      handleComparedDateChange();
-
+      handleComparedDateChange(null);
     }
 
-    else if (dateType === "Yearly") {
+    else if (dateType === "Monthly") {
       handleSelectedDateChange(australiaDate);
-      handleComparedDateChange();
-
+      
+      handleComparedDateChange(null);
     }
     
     
@@ -480,12 +671,13 @@ const processDashboardData = (dashboardData) => {
         };
         
         const params = {
-          fselected: moment.tz(australiaDate, 'Australia/Sydney').startOf('isoWeek').format('YYYY-MM-DD'),
-          tselected: moment.tz(australiaDate, 'Australia/Sydney').endOf('isoWeek').format('YYYY-MM-DD'), // 你可以根据需要修改这个值
-          fcompared: moment.tz(australiaDate, 'Australia/Sydney').subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD'),
-          tcompared: moment.tz(australiaDate, 'Australia/Sydney').subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD') // 你可以根据需要修改这个值
-        
-         
+          fselected: selectedDate,
+          tselected: tselectedDate, // 你可以根据需要修改这个值
+          // fselected: moment.tz(australiaDate, 'Australia/Sydney').startOf('isoWeek').format('YYYY-MM-DD'),
+          // tselected: moment.tz(australiaDate, 'Australia/Sydney').endOf('isoWeek').format('YYYY-MM-DD'), // 你可以根据需要修改这个值
+          fcompared: comparedDate,
+          tcompared: tcomparedDate, // 你可以根据需要修改这个值
+          dateType: dateType
         };
         const response = await axios.get(process.env.REACT_APP_SERVER_URL + '/searchSalesSummary', {
           ...config,
@@ -496,15 +688,27 @@ const processDashboardData = (dashboardData) => {
         if (!response.data.isAdmin) {
           setIsLoading(false);
           setDashboard_data(response.data.results);
+          
           processDashboardData(response.data.results);
           setHasBranch(response.data.hasBranchResult);
-          
-          // setUser(response.data.username);
+          setPosVersion(response.data.posVersion['PosVersion']);
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
-          console.log(response.data);
           
-
+          processHourlyData(response.data.hourlyResult);
+          const dateRanges = response.data.hourlyResult.map((item) => {
+            const key = Object.keys(item)[0];
+            const [startDate, endDate] = key.split(' - ');
+            return { startDate, endDate };
+          });
+          setHourlyRangeData(dateRanges);
+       
+          
+          setUser(response.data.ClientNameResult);
+          
+          setStoreName(response.data.StoreName);
+          setLastestUpdate(formatDateTime(response.data.LastestReportUpdateTimeResult));
+          
         } else {
           setIsLoading(false);
           setIsAdmin(response.data.isAdmin);
@@ -516,7 +720,6 @@ const processDashboardData = (dashboardData) => {
         console.log(error);
       }
     };
-
     fetchData();
     
   }, []);
@@ -535,13 +738,30 @@ const processDashboardData = (dashboardData) => {
     );
   } 
 
+  else if (!getIsLoading() && !getIsAdmin() && getDashboard_data()) { 
+    // console.log(NetSalesByDate.xAxisData1[2])
+    let daysOrHours = [];
 
-  
+    if (dateType === 'Daily') {
+      daysOrHours = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    } else if (dateType === 'Hourly') {
+      daysOrHours = Array.from({ length: 24 }, (_, i) => `${i}H`);
+    } else if (dateType === 'Weekly') {
+      daysOrHours = Array.from({ length: 4 }, (_, i) => `Week ${i + 1}`);
+    }else if (dateType === 'Monthly') {
+      daysOrHours = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul','Aug','Sep','Oct','Nov','Dec'];
+    }
+
+    function removeLastParenthesis(str) {
+      const index = str.lastIndexOf('(');
+      return index !== -1 ? str.substring(0, index).trim() : str;
+    }
+    
 
   return (
     <div className="container">
       <div className='sider'>
-      <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} 
+      <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} posVersion={posVersion}
           setIsChangePasswordModalOpen={setIsChangePasswordModalOpen}/>
       </div>
       <div className='main-layout'>
@@ -555,16 +775,16 @@ const processDashboardData = (dashboardData) => {
           <span className='material-icons-sharp active'>light_mode</span>
           <span className='material-icons-sharp'>dark_mode</span>
           </div> */}
-          {/* <div className='profile'>
+          <div className='profile'>
             <div className='info'>
-              <p>Hey, <b>{getUser()}</b> [{storeName.StoreName}]</p>
+              <p>Hey, <b>{getUser()}</b> [{storeName}]</p>
               <small className='text-muted'>Last Updates: {lastestUpdate}</small>
             </div>  
             <div className='profile-photo'>
               <img src='./images/enrichIcon.jpg' />
             </div>
-          </div> */}
-        </div>  
+          </div>
+        </div>   
       </div>
       <div className='content'>
       <main className='main-content' >
@@ -582,15 +802,15 @@ const processDashboardData = (dashboardData) => {
                  onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })} />
         </label>
         <label>
-  New Password: <input 
-    type="password" 
-    style={{ width: '150px' }} 
-    value={passwordData.newPassword} 
-    onChange={(e) => {
-      setPasswordData({ ...passwordData, newPassword: e.target.value });
-      checkPasswordsMatch();  // 在这里也检查密码是否匹配
-    }} 
-  />
+          New Password: <input 
+            type="password" 
+            style={{ width: '150px' }} 
+            value={passwordData.newPassword} 
+            onChange={(e) => {
+              setPasswordData({ ...passwordData, newPassword: e.target.value });
+              checkPasswordsMatch();  // 在这里也检查密码是否匹配
+            }} 
+          />
 </label>
         <label>
           Confirm Password: <input type="password" style={{ width: '150px' }} value={confirmPassword} 
@@ -609,97 +829,192 @@ const processDashboardData = (dashboardData) => {
           <div className="date">
             <h2>Selected Date</h2>
             <input type="date" value={selectedDate} onChange={(e) => handleSelectedDateChange(e.target.value)} />
-            {dateType !== "Daily" && (
+            {dateType!=="Hourly"&& (
               <>
                 to
                 <input type="date" value={tselectedDate} onChange={(e) => handleSelectedDateChange(e.target.value)} />
               </>
             )}
           </div>
+          {dateType !== "Monthly" && (
+            <div className="date">
+              <h2>Compared Date</h2>
+              <input type="date" value={comparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
+              {dateType !== "Hourly" && (
+                <>
+                  to
+                  <input type="date" value={tcomparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
+                </>
+              )}
+            </div>
+          )}
 
-          <div className="date">
-            <h2>Compared Date</h2>
-            <input type="date" value={comparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
-            {dateType !== "Daily" && (
-              <>
-                to
-                <input type="date" value={tcomparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
-              </>
-            )}
-          </div>
 
           <button className="ripple" onClick={handleSearch}>Search</button>
           <div className='daily-report'>
-          <table>
-          <thead>
-          <tr>
-            <th></th>
-            <th>
-              {
-                isCurrentDate ? 
-                <>
-                  Current Date: <br />
-                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                </> : 
-                (selectedDate === tselectedDate ? 
-                <>
-                  Selected Date: <br />
-                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                </> : 
-                <>
-                  Selected Date Range: <br />
-                  {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tselectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                </>)
-              }
-            </th>
+          <table className='sales-summary-table'>
+  <thead>
+    <tr>
+      <th></th>
+      <th>
+        {
+          isCurrentDate ? 
+          <>
+            Today: <br />
+            {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+          </> : 
+          (selectedDate === tselectedDate ? 
+          <>
+            Selected Date: <br />
+            {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+          </> : 
+          <>
+            Selected Date Range: <br />
+            {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tselectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+          </>)
+        }
+      </th>
+      {
+         (comparedDate && moment(comparedDate).isValid() &&
+         tcomparedDate && moment(tcomparedDate).isValid() && 
+         (
+           // 检查comparedTotalNetSalesDateRange是否存在并匹配日期范围
+           (comparedTotalNetSalesDateRange && 
+            comparedTotalNetSalesDateRange.startDate === formatDate(comparedDate) &&
+            comparedTotalNetSalesDateRange.endDate === formatDate(tcomparedDate)
+           ) ||
+           // 检查hourlyRangeData是否存在并匹配日期范围
+           (hourlyRangeData[1] && 
+            hourlyRangeData[1].startDate === comparedDate &&
+            hourlyRangeData[1].endDate === tcomparedDate)
+         )
+        )  && (
+          <th>
+            {
+              comparedDate === tcomparedDate ? 
+              <>
+                Compared Date: <br />
+                {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+              </> : 
+              <>
+                Compared Date Range: <br />
+                {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tcomparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+              </>
+            }
+          </th>
+        )      }
+    </tr>
+  </thead>
+  <tbody>
+  {daysOrHours.map((dayOrHour, index) => {
+  // 为 selectedDate 和 comparedDate 获取数据
+  const selectedAmount = dateType === "Hourly"
+    ? PeakLineChartData[0][index]?.amount
+    : NetSalesByDate.yAxisData1[index];
 
-          {
-            (comparedDate && tcomparedDate ) && (
-              <th>
-                {
-                  comparedDate === tcomparedDate ? 
-                  <>
-                    Compared Date: <br />
-                    {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                  </> : 
-                  <>
-                    Compared Date Range: <br />
-                    {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tcomparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
-                  </>
+  const comparedAmount = dateType === "Hourly"
+    ? PeakLineChartData[1][index]?.amount
+    : NetSalesByDate.yAxisData2[index];
+    <td>
+      {selectedTotalNetSalesDateRange &&
+      selectedTotalNetSalesDateRange.startDate === formatDate(selectedDate) &&
+      selectedTotalNetSalesDateRange.endDate === formatDate(tselectedDate)
+        ? selectedAmount != null
+          ? dateType === 'Weekly'
+            ? <span>{selectedAmount.toLocaleString()} <span style={{fontSize: '10px'}}><br />({removeLastParenthesis(NetSalesByDate.xAxisData1[index])})</span></span>
+            : selectedAmount.toLocaleString()
+          : "-"
+        : "-"}
+    </td>
+    
+  // 如果 selectedAmount 和 comparedAmount 同时为 0 或者不存在，则不渲染该行
+  if ((selectedAmount === 0 || selectedAmount == null) && (comparedAmount === 0 || comparedAmount == null)) {
+    return null;
+  }
+
+  return (
+    <tr key={dayOrHour}>
+      <td>{dayOrHour}</td>
+      <td>
+  {selectedTotalNetSalesDateRange &&
+  selectedTotalNetSalesDateRange.startDate === formatDate(selectedDate) &&
+  selectedTotalNetSalesDateRange.endDate === formatDate(tselectedDate)
+    ? selectedAmount != null
+      ? dateType === 'Weekly'
+        ? <span>{selectedAmount.toLocaleString()} <span style={{fontSize: '10px'}}><br />({removeLastParenthesis(NetSalesByDate.xAxisData1[index])})</span></span>
+        : selectedAmount.toLocaleString()
+      : "-"
+    : "-"}
+</td>
+<td>
+  {comparedDate && tcomparedDate && comparedAmount !== null
+    ? comparedTotalNetSalesDateRange &&
+      comparedTotalNetSalesDateRange.startDate === formatDate(comparedDate) &&
+      comparedTotalNetSalesDateRange.endDate === formatDate(tcomparedDate)
+      ? (
+        <span>
+          {comparedAmount !== 0
+            ? (
+              <span>
+                {comparedAmount.toLocaleString()}{" "}
+                {dateType === 'Weekly'
+                  ? (
+                    <span style={{ fontSize: '10px' }}>
+                      <br />({removeLastParenthesis(NetSalesByDate.xAxisData2[index])})
+                    </span>
+                  )
+                  : null // Don't execute removeLastParenthesis for non-Weekly dateType
                 }
-              </th>
-
+              </span>
+            )
+            : (
+              <span>
+                0{" "}
+                {dateType === 'Weekly'
+                  ? (
+                    <span style={{ fontSize: '10px' }}>
+                      <br />({removeLastParenthesis(NetSalesByDate.xAxisData2[index])})
+                    </span>
+                  )
+                  : null // Don't execute removeLastParenthesis for non-Weekly dateType
+                }
+              </span>
             )
           }
+        </span>
+      )
+      : ""
+    : "-"}
+</td>
 
-          </tr>
-        </thead>
-        <tbody>
-        {
-  (
-    selectedTotalNetSalesDateRange && 
-    selectedTotalNetSalesDateRange.startDate === formatDate(selectedDate) && 
-    selectedTotalNetSalesDateRange.endDate === formatDate(tselectedDate) && 
-    typeof selectedTotalNetSales === 'number'
-  ) && (
-    <tr>
-      <td className="left-align">Total Net Sales</td>
-      <td>{selectedTotalNetSales.toLocaleString()}</td>
-      {
-        (
-          comparedTotalNetSalesDateRange && 
-          comparedTotalNetSalesDateRange.startDate === formatDate(comparedDate) &&
-          comparedTotalNetSalesDateRange.endDate === formatDate(tcomparedDate) && comparedDate && tcomparedDate &&
-          typeof comparedTotalNetSales === 'number'
-        ) ? 
-        <td>{comparedTotalNetSales.toLocaleString()}</td> : <td> 0 </td>
-      }
+
+
     </tr>
-  )
-}
+  );
+})}
 
-        </tbody>
-          </table>
+    <tr>
+      <td>Total Net Sales</td>
+      <td>
+        {(selectedTotalNetSalesDateRange &&
+          selectedTotalNetSalesDateRange.startDate === formatDate(selectedDate) &&
+          selectedTotalNetSalesDateRange.endDate === formatDate(tselectedDate) &&
+          typeof selectedTotalNetSales === 'number') 
+          ? selectedTotalNetSales.toLocaleString() : '-'}
+      </td>
+      {comparedDate && tcomparedDate && comparedTotalNetSalesDateRange &&   (
+        <td>
+          {(comparedTotalNetSalesDateRange &&
+            comparedTotalNetSalesDateRange.startDate === formatDate(comparedDate) &&
+            comparedTotalNetSalesDateRange.endDate === formatDate(tcomparedDate) &&
+            typeof comparedTotalNetSales === 'number') 
+            ? comparedTotalNetSales.toLocaleString() : ''}
+        </td>
+      )}
+    </tr>
+  </tbody>
+</table>
+
           </div>
           
         </div> 
@@ -708,7 +1023,7 @@ const processDashboardData = (dashboardData) => {
       <div className='right'>
             <div className='rank'>
           {
-            dateType === "Weekly" || dateType ==='Yearly' ?
+            dateType !== "Hourly"?
             (
               <>
                 <h2>Sales Summary Chart</h2>
@@ -717,7 +1032,16 @@ const processDashboardData = (dashboardData) => {
                 </div>
               </>
             )
-            : null
+            : (
+              dateType === "Hourly" && PeakLineChartData  ? (
+                <>
+                  <h2>Hourly Sales Chart</h2>
+                  <div className='chart'>
+                    <PeakLineChart data={PeakLineChartData}  />
+                  </div>
+                </>
+              ) : null
+            )
           }
             </div>
           </div>
@@ -727,6 +1051,7 @@ const processDashboardData = (dashboardData) => {
       </div>
     </div>
   );
+}
 
 
 };

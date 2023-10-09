@@ -2,37 +2,83 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 
 const Mchart = ({ title, data, dateType }) => {
+
   const chartRef = useRef(null);
   const [showComparedWeek, setShowComparedWeek] = useState(!!data.yAxisData2);
+  console.log(data);
 
   useEffect(() => {
     const chartDom = chartRef.current;
     const myChart = echarts.init(chartDom);
     myChart.showLoading();
+    const gridBottom =  data.xAxisData2.length > 0  ? 80 : 60;
 
-    const seriesData = [
-      {
-        name: dateType === 'Yearly' ? 'Selected Year' : 'Selected Week',  // 根据 dateType 来设置 name
-        type: 'bar',
-        emphasis: {
-          focus: 'series',
-        },
-        data: data.yAxisData1,
-        xAxisIndex: 0,
+    const legendData = [];
+
+    if (dateType === 'Weekly') {
+      if (data.xAxisData1.length > 0) {
+        const firstDate = data.xAxisData1[0].split(' ')[0]; // 获取第一个日期
+        const lastDate = data.xAxisData1[data.xAxisData1.length - 1].split(' ')[0]; // 获取最后一个日期
+        console.log(firstDate);
+        legendData.push(`Selected: ${firstDate} to ${lastDate}`);
       }
-    ];
-
-    if (showComparedWeek) {
-      seriesData.push({
-        name: dateType === 'Yearly' ? 'Compared Year' : 'Compared Week', 
-        type: 'bar',
-        emphasis: {
-          focus: 'series',
-        },
-        data: data.yAxisData2,
-        xAxisIndex: 0,
-      });
+  
+      if (showComparedWeek && data.xAxisData2.length > 0) {
+        const firstDate = data.xAxisData2[0].split(' ')[0]; // 获取第一个日期
+        const lastDate = data.xAxisData2[data.xAxisData2.length - 1].split(' ')[0]; // 获取最后一个日期
+        legendData.push(`Compared: ${firstDate} to ${lastDate}`);
+      }
+    } else {
+      // 非 'Monthly' 的情况
+      if (data.xAxisData1.length > 0) {
+        legendData.push(`Selected: ${data.xAxisData1[0]} to ${data.xAxisData1[data.xAxisData1.length - 1]}`);
+      }
+  
+      if (showComparedWeek && data.xAxisData2.length > 0) {
+        legendData.push(`Compared: ${data.xAxisData2[0]} to ${data.xAxisData2[data.xAxisData2.length - 1]}`);
+      }
     }
+
+    let seriesNameForSelected = data.xAxisData1.length > 0 ? `Selected: ${data.xAxisData1[0]} to ${data.xAxisData1[data.xAxisData1.length - 1]}` : '';
+let seriesNameForCompared = data.xAxisData2.length > 0 ? `Compared: ${data.xAxisData2[0]} to ${data.xAxisData2[data.xAxisData2.length - 1]}` : '';
+
+if (dateType === 'Weekly') {
+  if (data.xAxisData1.length > 0) {
+    const firstDate = data.xAxisData1[0].split(' ')[0]; // 获取第一个日期
+    const lastDate = data.xAxisData1[data.xAxisData1.length - 1].split(' ')[0]; // 获取最后一个日期
+    seriesNameForSelected = `Selected: ${firstDate} to ${lastDate}`;
+  }
+
+  if (showComparedWeek && data.xAxisData2.length > 0) {
+    const firstDate = data.xAxisData2[0].split(' ')[0]; // 获取第一个日期
+    const lastDate = data.xAxisData2[data.xAxisData2.length - 1].split(' ')[0]; // 获取最后一个日期
+    seriesNameForCompared = `Compared: ${firstDate} to ${lastDate}`;
+  }
+}
+
+const seriesData = [
+  {
+    name: seriesNameForSelected,  // 使用动态设置的 seriesNameForSelected
+    type: 'bar',
+    emphasis: {
+      focus: 'series',
+    },
+    data: data.yAxisData1,
+    xAxisIndex: 0,
+  }
+];
+
+if (showComparedWeek) {
+  seriesData.push({
+    name: seriesNameForCompared,  // 使用动态设置的 seriesNameForCompared
+    type: 'bar',
+    emphasis: {
+      focus: 'series',
+    },
+    data: data.yAxisData2,
+    xAxisIndex: 0,
+  });
+}
 
     const option = {
       color: ['#5470C6', '#EE6666'],
@@ -46,14 +92,16 @@ const Mchart = ({ title, data, dateType }) => {
         orient: 'horizontal',
         bottom: 0,
         textStyle: {
-          fontSize: 14,
+          fontSize: 11,
           fontWeight: 'bold',
         },
+
+        data: legendData,  // 使用动态设置的 legendData
       },
       grid: {
         left: '20%',  // Increase this value as needed
         top: 70,
-        bottom: 50,
+        bottom: gridBottom,
       },
       axisPointer: {
         link: { xAxisIndex: 'all' },  // 这里链接所有的 X 轴
@@ -70,11 +118,12 @@ const Mchart = ({ title, data, dateType }) => {
               color: '#5470C6',
             },
           },
+          
           axisPointer: {
             label: {
               formatter: function(params) {
                 const formattedData = params.seriesData.length ? parseFloat(params.seriesData[0].data).toLocaleString() : '';
-                return params.value + (params.seriesData.length ? ':$ ' + formattedData : '');
+                return params.value + (params.seriesData.length ? ': $' + formattedData : '');
               }
             }
           },
@@ -100,7 +149,7 @@ const Mchart = ({ title, data, dateType }) => {
               formatter: function (params) {
                 return (
                   params.value +
-                  (params.seriesData.length ? '：$ ' + params.seriesData[0].data : '')
+                  (params.seriesData.length ? ': $ ' + params.seriesData[0].data : '')
                 );
               },
             },

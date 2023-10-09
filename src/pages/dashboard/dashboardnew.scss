@@ -140,16 +140,12 @@ aside .top{
     justify-content: space-between;
     margin-top: 1.4rem;
 }
+
 aside .logo{
     display: flex;
     gap:0.8rem;
+    
 }
-
-aside .logo img{
-    width:5rem;
-    height:2rem;
-}
-
 aside .close{
     display: none;
 } 
@@ -218,6 +214,11 @@ aside .sidebar .message-count{
     font-size:11vw;
     border-radius: var(--border-radius-1);
 }
+
+.wrap-text h3 {
+    max-width: 100px;  /* 或者其他合适的宽度 */
+    white-space: normal;
+}
 main{
     // margin-top: 2.4rem;
     margin-left: 2.2rem;
@@ -243,7 +244,7 @@ main .date input[type="date"]{
 /*=====store list=====*/
 main .store-list{
     display: grid;
-    grid-template-columns: repeat(4,1fr);
+    grid-template-columns: repeat(3,1fr);
     gap: 1.6rem;
 }
 main .store-list > div {
@@ -1160,6 +1161,6 @@ html,body{
     .change-pass{
         font-size: 15px !important;
     }
-    
+   
   }
-  
+

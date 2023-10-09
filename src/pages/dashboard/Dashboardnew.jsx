@@ -12,6 +12,7 @@ import Chart from '../../components/chart/Chart';
 import SalesPieChart from '../../components/chart/SalesPieChart';  
 
 
+
 const Dashboardnew = () => {
   const [user, setUser, getUser] = useGetState(null);
   const [lastestUpdate, setLastestUpdate] = useState(null);
@@ -23,14 +24,14 @@ const Dashboardnew = () => {
   const [hasBranch, setHasBranch] = useState(false);
 
   const [leaderboardData, setleaderboardData] = useState(null);
+  const [groupItemSalesData, setGroupItemSalesData] = useState(null);
   const [SalesPieChartData, setSalesPieChartData] = useState(null);
-
+  const [groupItemSalesPieChartData, setGroupItemSalesPieChartData] = useState(null);
 
   const [paymentData, setPaymentData, getPaymentData] = useGetState(null);
   const [cashAmount, setCashAmount] = useState(0);
   const [nonCashPayments, setNonCashPayments] = useState([]);
   const [storeName, setStoreName] = useState(null);
-
   const [posVersion, setposVersion] = useState(null);
  
 
@@ -134,7 +135,7 @@ const Dashboardnew = () => {
   'NonSalesTillOpen',
   'AverageSales',
   'NegativeSalesAmount',
- ]);  // 你想默认显示的键的集合
+ ]); 
 
  const defaultKeysToShow_h = new Set(['NetSales',
   'TotalTransaction',
@@ -143,7 +144,7 @@ const Dashboardnew = () => {
   'NonSaleOpenDrawer',
   'AverageSales',
   'VoidAmount',
-]);  // 你想默认显示的键的集合
+]); 
 
 useEffect(() => {
   if (posVersion === 0) {
@@ -152,54 +153,6 @@ useEffect(() => {
     setDefaultKeysToShow(defaultKeysToShow_h);
   }
 }, [posVersion]);
-
-  
-// const processDashboardData = (dashboardData) => {
-//   console.log(dashboardData);
-//   let selectedTotalNetSales = 0;
-
-//   try{
-//     if (Array.isArray(dashboardData)) {
-//     dashboardData.forEach(dashboardData => {
-//       Object.entries(dashboardData).forEach(([dateRange, data]) => {
-//         if (Array.isArray(data)) {
-//         const [startDate, endDate] = dateRange.split(' - ');
-  
-//         // 对比日期并获取相应数据
-//         if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
-//           setSelectedTotalNetSalesDateRange({ startDate, endDate });
-//           // 遍历 data 数组，累加 TotalNetSales
-//           data.forEach(({ TotalNetSales }) => {
-//             selectedTotalNetSales += TotalNetSales;
-//           });
-//           const totalNetSalesMap = new Map();
-//           let currentDate = new Date(startDate);
-//           const endDateObject = new Date(endDate);
-
-//           while (currentDate <= endDateObject) {
-//             const dateKey = currentDate.toLocaleDateString();
-//             totalNetSalesMap.set(dateKey, 0);
-//             currentDate.setDate(currentDate.getDate() + 1);
-//           }
-//           // 遍历 data 数组，更新 TotalNetSales
-//           data.forEach(({ TotalNetSales, Date: SalesDate }) => {
-//             const dateKey = new Date(SalesDate).toLocaleDateString();
-//             totalNetSalesMap.set(dateKey, TotalNetSales);
-//           });          
-          
-//         };
-//       }
-       
-//       });
-//     });
-//     setSelectedTotalNetSales(selectedTotalNetSales);
-
-//   }}
-//   catch (error) {
-//     console.log(error);
-//     // navigate('/');
-//   }
-// };
 
   const pieChartData = [
     { name: 'CASH', value: parseFloat(cashAmount.toFixed(2)) },
@@ -240,12 +193,8 @@ useEffect(() => {
   };
   
   const processPaymentData = (paymentData, selectedInput,tselectedInput) => {
-    // console.log(paymentData);
-
     let cash = 0;
     const nonCash = [];
-
-    
     const obj = paymentData[Object.keys(paymentData)[0]];
     if (Object.keys(obj).length === 0 && obj.constructor === Object) {
       return {
@@ -256,10 +205,7 @@ useEffect(() => {
 
     Object.keys(paymentData).forEach(dateRangeKey => {
       const [startDate, endDate] = dateRangeKey.split(' - ');
-      // console.log(startDate);
-      // console.log(endDate);
-      // console.log(selectedInput);
-      // console.log(tselectedInput);
+
       if (startDate === selectedInput && endDate === tselectedInput) {
         paymentData[dateRangeKey].forEach(item => {
           if (item.Description.toUpperCase() === 'CASH') {
@@ -332,9 +278,12 @@ useEffect(() => {
         setHasBranch(response.data.hasBranchResult);
 
         const { cashAmount, nonCashPayments } = processPaymentData(response.data.paymentResults, selectedDate,tselectedDate);
+        
         setSalesPieChartData(processItemSalesResults(response.data.itemSalesResults)); 
-        console.log(processItemSalesResults(response.data.itemSalesResults));
-       
+        setGroupItemSalesData(response.data.groupItemSalesResults);
+        setGroupItemSalesPieChartData(processItemSalesResults(response.data.groupItemSalesResults));
+        
+
         setCashAmount(cashAmount);
         setNonCashPayments(nonCashPayments);
         setBranchPaymentData(response.data.branchPaymentResults);
@@ -379,11 +328,8 @@ useEffect(() => {
   
   const processItemSalesResults = (itemSalesResults) => {
     const firstKey = Object.keys(itemSalesResults)[0];  // 获取第一个键
-    const salesData = itemSalesResults[firstKey];  // 使用第一个键来获取销售数据
     
-    if (Array.isArray(salesData) && salesData.length === 1) {
-      return [];  // 如果是数组并且没有销售数据，则返回空数组
-    }
+    const salesData = itemSalesResults[firstKey];  // 使用第一个键来获取销售数据
     
     if (salesData && Object.keys(salesData).length === 0) {
       return [];  // 如果是对象并且没有销售数据（对象为空），则返回空数组
@@ -394,7 +340,7 @@ useEffect(() => {
     
     // 添加占比信息并保留两位小数
     return salesData.map(item => ({
-      Description: item.Description,
+      Description: item.Description || item.ItemGroup || 'N/A',
       Amount: Number(item.Amount.toFixed(2)),
       Percentage: Number((item.Amount / totalAmount * 100).toFixed(2))
     }));
@@ -431,6 +377,7 @@ useEffect(() => {
         if (!response.data.isAdmin && response.data.results) {
           
           setposVersion(response.data.PosVersion);
+          
           // console.log(response.data.results.NetSales);
           setDashboard_data(response.data.results);
 
@@ -438,10 +385,12 @@ useEffect(() => {
           //processDashboardData(response.data.results);
 
           setleaderboardData(response.data.itemSalesResults);
-          
+          setGroupItemSalesData(response.data.groupItemSalesResults);
+   
           setSalesPieChartData(processItemSalesResults(response.data.itemSalesResults)); 
+          setGroupItemSalesPieChartData(processItemSalesResults(response.data.groupItemSalesResults));
 
-
+          
           
           setPaymentData(response.data.paymentResults);
           setHasBranch(response.data.hasBranchResult);
@@ -454,7 +403,7 @@ useEffect(() => {
           
           setBranchPaymentData(response.data.branchPaymentResults);
 
-          console.log(response.data.StoreName);
+   
           setStoreName(response.data.StoreName);
           setUser(response.data.ClientNameResult);
           setLastestUpdate(formatDateTime(response.data.LastestReportUpdateTimeResult));
@@ -508,13 +457,11 @@ useEffect(() => {
 
 
 else if (!getIsLoading() && !getIsAdmin() ) {
- 
-
 return (
 
 <div className="container">
 <div className='sider'>
-  <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} 
+  <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} posVersion={posVersion}
           setIsChangePasswordModalOpen={setIsChangePasswordModalOpen}/>
 </div>
   <div className='main-layout'>
@@ -631,7 +578,7 @@ return (
                 
 
                 return (
-                  <>
+                  <><React.Fragment key={index}>
                     {keysToRender.map((key, innerIndex) => (
                       <tr key={innerIndex}>
                         <td className="left-align">
@@ -649,6 +596,7 @@ return (
                         <td className="custom-font-size">{parseFloat(discount.toFixed(2)).toLocaleString()}</td>
                       </tr>
                     )}
+                  </React.Fragment>
                   </>
                 );
               }
@@ -665,8 +613,32 @@ return (
     
 
         <div className = 'right'>
+
+        {posVersion === 1 && (
+  <div className='rank'>
+    <h2>Item Group Sales</h2>
+    <div className='rank-list'>
+      {(() => {
+        let dataForGroupItemSales = [];
+        if (groupItemSalesData) {
+          Object.keys(groupItemSalesData).forEach(dateRangeKey => {
+            const [startDate, endDate] = dateRangeKey.split(' - ');
+            if (startDate === selectedDate && endDate === tselectedDate && groupItemSalesData[dateRangeKey].length !== 0) {
+              dataForGroupItemSales = groupItemSalesData[dateRangeKey];
+            }
+          });
+        }
+        return <Leaderboard data={dataForGroupItemSales.length > 0 ? dataForGroupItemSales : []} showRank={false} />;
+      })()}
+    </div>
+    <SalesPieChart data={groupItemSalesPieChartData} />
+  </div>
+)}
+
     <div className='rank'>
-      <h2>Sales Ranking</h2>
+    <h2>
+        {posVersion === 1 ? "Item Sales Ranking" : "Category Sales Ranking"}
+      </h2>
       <div className='rank-list'>
         {(() => {
           // 初始化一个变量来保存匹配日期范围的数据
@@ -686,7 +658,7 @@ return (
           }
 
           // 渲染 Leaderboard 组件，并将匹配的数据传入
-          return <Leaderboard data={dataForLeaderboard.length > 0 ? dataForLeaderboard : []} />;
+          return <Leaderboard data={dataForLeaderboard.length > 0 ? dataForLeaderboard : []} showRank={true}  />;
         })()}
       </div>
       <SalesPieChart data={SalesPieChartData} />
@@ -741,11 +713,6 @@ return (
           </div>
         )}
     </div>
-
-
-
-    
-    
       </div>
   </div>
   </main>
@@ -753,7 +720,6 @@ return (
 <div className="footer">
       {/* 你的底部代码 */}
   </div>
-
 
 </div>
 
