@@ -12,6 +12,8 @@ import CheckStores from './pages/dashboard/CheckStores.jsx';
 import SalesSummary from './pages/summary/SalesSummary.jsx';  
 
 import Admindashboard from './pages/admin/Admindashboard.jsx';
+import WeeklySales from './pages/weeklysales/WeeklySales.jsx';
+// import WeeklySalesGP from './pages/weeklysales/WeeklySalesGP.jsx';
 
 const App = () => {
   const [isAdmin, setIsAdmin] = useState(false); // 管理员身份状态
@@ -33,6 +35,8 @@ const App = () => {
         <Route path="/notification-setup" element={<NotificationSetup />} />
         <Route path="/notification-list" element={<NotificationList />} />
         <Route path="/checkStores" element={<CheckStores />} />
+        <Route path="/weeklySales" element={<WeeklySales />} />
+        {/* <Route path="/weeklySales_GP" element={<WeeklySalesGP />} /> */}
 
         <Route path="/admin-dashboard" element={<Admindashboard />} />
 

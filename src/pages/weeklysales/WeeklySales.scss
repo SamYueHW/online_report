@@ -1,0 +1,115 @@
+
+
+.table-scrollable-container {
+    width: calc(100vw - 50px - 50px - 200px); /* 100vw 是整个视口的宽度 */
+    // width: 100%;
+    height: calc(100vh - 50px - 50px - 200px); /* 100vh 是整个视口的高度 */
+   
+    overflow-x: auto; /* 如果表格宽度超过容器宽度，则在x轴上滚动 */
+    overflow-y: auto; /* 如果表格高度超过容器高度，则在y轴上滚动 */
+  }
+@media  (max-width: 515px) {
+  .table-scrollable-container{
+    width: 100%;
+    height: 500px;
+  }
+  
+  
+}
+
+
+.sales-analysis-table {
+    width: 100%;
+    border-collapse: collapse;
+  
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+  
+    th {
+      background-color: #f2f2f2;
+    }
+  }
+  .sales-analysis-gp-table {
+    width: 100%;
+    border-collapse: collapse;
+  
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+  
+    th {
+      background-color: #f2f2f2;
+    }
+  }
+  .analysis-button {
+    padding: 10px;
+    border: 2px solid #000;
+    background-color: #fff;
+    cursor: pointer;
+    margin: 5px;
+    color: #000;
+    font-size: 12px;
+  }
+  
+  .analysis-button:hover {
+    background-color: #0f0f0f;
+    color: #fff;
+  }
+
+  .even-row {
+    background-color: rgb(233 201 169 / 35%);
+  }
+  .sales-analysis-table tr td:first-child,
+.sales-analysis-table tr th:first-child,
+.sales-analysis-gp-table tr td:first-child,
+.sales-analysis-gp-table tr th:first-child {
+  color: black !important;  /* 设置文字为黑色 */
+  font-size: 14px !important;  /* 设置字体大小为16px，或者其他你喜欢的大小 */
+}
+.sticky-row {
+    background-color: #ebebeb;
+    position: sticky;
+    bottom: 0;  /* 固定在底部 */
+    z-index: 1000;
+  }
+  
+  .sticky-header-top {
+    background-color: #f2f2f2;  /* 背景颜色 */
+    position: sticky;
+    top: 0;  /* 固定在顶部 */
+    z-index: 1000;  /* z-index 确保它在其他内容上面 */
+  }
+  .sticky-header {
+    background-color: #f2f2f2;  /* 背景颜色 */
+    position: sticky;
+    top: 38px;  /* 固定在顶部 */
+    z-index: 1000;  /* z-index 确保它在其他内容上面 */
+  }
+  
+  .sticky-description {
+    background-color: #f2f2f2;  /* 背景颜色，您可以自己选择 */
+    position: sticky;
+    left: 0;  /* 固定在最左侧 */
+    z-index: 1000;  /* z-index 确保它在其他内容上面 */
+  }
+  .sticky-corner {
+    background-color: #f2f2f2;  /* 选择您自己喜欢的背景颜色 */
+    position: sticky;
+    top: 0;  /* 固定在顶部 */
+    left: 0;  /* 也固定在左侧 */
+    z-index: 1001;  /* 这个 z-index 应该比其他粘性元素的 z-index 高，以确保它总是在顶部 */
+  }
+  .sticky-corner-bottom {
+    background-color: #ebebeb;  /* 背景颜色，可以自己选择 */
+    position: sticky;
+    bottom: 0;  /* 固定在底部 */
+    left: 0;  /* 也固定在左侧 */
+    z-index: 1001;  /* 这个 z-index 应该比其他粘性元素的 z-index 高，以确保它总是在顶部 */
+  }
+    
+  

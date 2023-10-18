@@ -344,7 +344,23 @@ main .search_btn:hover, .search_btn:focus, .search_btn:active{
   }
   
   /* Button style */
-button {
+.ripple {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 12px 18px;
+    font-size: 1vw;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: white;
+    background-color: #61b3f7;
+    box-shadow: 0 0 4px #999;
+    outline: none;
+    border-radius: var(--border-radius-1);
+}
+.store-button {
     display: block;
     margin-top: 6px;
     margin-bottom: 10px;
@@ -429,9 +445,10 @@ main table tbody tr:last-child td{
 }
 
 
-main table tbody tr:hover{
+table:not(.sales-analysis-table):not(.sales-analysis-gp-table) tbody tr:hover {
     background: var(--color-light);
 }
+
 .middle .row:hover{
     background: var(--color-light);
 }
@@ -1120,7 +1137,7 @@ html,body{
     }
     .sider > aside {
         width: 200px;
-        z-index: 999;
+        z-index: 1010;
     }
 
     .ripple{
@@ -1128,6 +1145,7 @@ html,body{
         margin-top: 1rem;
         display: block;
     }
+
     .header .profile{
         gap: 1rem;
     }

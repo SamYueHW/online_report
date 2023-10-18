@@ -61,11 +61,11 @@ const fs = require('fs');
 const https = require('https');
 
 // 读取证书文件
-const privateKey  = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.key", 'utf8');
-const certificate = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.pem", 'utf8');
-const ca = fs.readFileSync('C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/ca.pem', 'utf8');
+// const privateKey  = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.key", 'utf8');
+// const certificate = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.pem", 'utf8');
+// const ca = fs.readFileSync('C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/ca.pem', 'utf8');
 
-const credentials = { key: privateKey, cert: certificate, ca: ca };
+// const credentials = { key: privateKey, cert: certificate, ca: ca };
 
 // Remove the default Console log transport
 winston.remove(winston.transports.Console);
@@ -83,8 +83,8 @@ app.use(express.json({ type: 'application/json' }));
 
 
 app.use(cors({
-  // origin: 'http://localhost:3000', // 指定接受请求的源
-  origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
+  origin: 'http://localhost:3000', // 指定接受请求的源
+  // origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
   credentials: true,  // 允许跨域携带凭证
 }));
 
@@ -373,10 +373,16 @@ app.get('/checkAccount', (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 app.get('/dashboard',(req, res) => {
     try {
       
       const origin_token = req.headers['authorization'];  // 打印所有请求头，以便调试
+      // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
       const token = origin_token.split(' ')[1]; // 获取 JWT Token
       // 验证并解码 JWT
       jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
@@ -386,24 +392,24 @@ app.get('/dashboard',(req, res) => {
 
       
       if(decoded.isAdmin === true){
-        
         if (decoded.username === process.env.ADMIN_EMAIL_LOTUS) {
-          query = 'SELECT * FROM stores WHERE Category = "melb"';
+          query = 'SELECT * FROM stores WHERE Category = "melb" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "melb"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_IPOS) {
-          query = 'SELECT * FROM stores WHERE Category = "syd"';
+          query = 'SELECT * FROM stores WHERE Category = "syd" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "syd"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_QLD) {
-          query = 'SELECT * FROM stores WHERE Category = "qld"';
+          query = 'SELECT * FROM stores WHERE Category = "qld" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "qld"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_ENRICH) {
-          query = 'SELECT * FROM stores';
+          query = 'SELECT * FROM stores ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers';
         }
 
+        
         
         const store_result = await executeDb(query, [], { fetchAll: true });
         const storeIds = store_result.map(store => store.StoreId);
@@ -521,6 +527,10 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
 
     const sumColumns_r = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
     const sumColumns_h = columnsToSum_h.map(column => `SUM(${column}) AS ${column}`).join(', ');
+    const lastWeekDate = moment(selectedDate).subtract(7, 'days').format('YYYY-MM-DD');
+    let lastWeekNetSalesQuery;
+  
+
  
     if (pos_version_results[0].PosVersion === 1) {
         query = `
@@ -532,6 +542,8 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
             FROM report_records_h 
             WHERE StoreId = ? AND Date BETWEEN ? AND ?
         `;
+        lastWeekNetSalesQuery = `SELECT NetSales FROM report_records_h WHERE StoreId = ? AND Date = ?`;
+
     } else {
         query = `
             SELECT 
@@ -540,6 +552,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
             FROM report_records_r 
             WHERE StoreId = ? AND Date BETWEEN ? AND ?
         `;
+        lastWeekNetSalesQuery = `SELECT TotalNetSales FROM report_records_r WHERE StoreId = ? AND Date = ?`;
     }
       
       const results = await executeDb(query, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
@@ -552,6 +565,12 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       } else {
         dataWithDate[dateRangeKey] = results;
       }
+      const lastWeekNetSales = await executeDb(lastWeekNetSalesQuery, [selectedStoreId, lastWeekDate], { fetchAll: true });
+      const lastWeekNetSalesResult = lastWeekNetSales[0]?.TotalNetSales ?? lastWeekNetSales[0]?.NetSales;
+
+
+
+   
 
       const itemSalesQuery = 'SELECT Description, sum(Amount) as Amount, sum(Qty) as Qty FROM report_itemsales_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description ORDER By Amount DESC';
       const itemSalesResults = await executeDb(itemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
@@ -561,6 +580,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       if (pos_version_results[0].PosVersion === 1) {
         const groupItemSalesQuery = 'SELECT ItemGroup, sum(Amount) as Amount, sum(Qty) as Qty FROM item_group_records_h WHERE StoreId IN (?) AND Date BETWEEN ? AND ? GROUP BY ItemGroup ORDER By Amount DESC';
         groupItemSalesResults = await executeDb(groupItemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      
       }
       const groupItemSalesWithDate= {};
         
@@ -589,7 +609,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       }
       const storeNamesQuery = 'SELECT StoreName FROM stores WHERE StoreId = ?';
       const storeNamesResults = await executeDb(storeNamesQuery, [selectedStoreId], { fetchAll: true });
-
+      
       return { status: 200, data: {
       PosVersion: pos_version_results[0].PosVersion,
       ClientNameResult: ClientNameResult,
@@ -601,6 +621,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       paymentResults:paymentSalesWithDate, 
       hasBranchResult: hasBranch,
       groupItemSalesResults: groupItemSalesWithDate,
+      lastWeekNetSalesResult: lastWeekNetSalesResult,
 
       // branchPaymentResults:branchPaymentWithDate, 
       isAdmin: false } };
@@ -618,6 +639,11 @@ app.get('/searchreport', async (req, res) => {
   const fselected = req.query.fselected;
   const tselected = req.query.tselected;
   const origin_token = req.headers['authorization'];
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
   const token = origin_token.split(' ')[1];
   const pos_version_query = 'SELECT PosVersion, LastestReportUpdateTime,StoreName FROM stores WHERE StoreId = (?)';
 
@@ -750,6 +776,11 @@ app.get('/searchSalesSummary', async (req, res) => {
   const dateType = req.query.dateType;
  
   const origin_token = req.headers['authorization'];
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
   const token = origin_token.split(' ')[1];
   const pos_version_query = 'SELECT * FROM stores WHERE StoreId = ?';
   
@@ -823,6 +854,101 @@ app.get('/searchSalesSummary', async (req, res) => {
   }
 });
 
+const fetchWeeklyData = async (selectedDate, posVersionQuery, jwtToken) => {
+  try {
+    const decoded = await jwtVerify(jwtToken, process.env.JWT_SECRET_KEY);
+
+    const storeIds = decoded.storeIds;
+    const selectedStoreId = decoded.selectedStoreId;
+    const pos_version_results = await executeDb(posVersionQuery, [selectedStoreId], { fetchAll: true });
+
+    if (selectedStoreId && storeIds.includes(selectedStoreId) && pos_version_results[0].PosVersion === 0) {
+      let hasBranch = false;
+      if (storeIds.length > 1) {
+        hasBranch = true;
+      }
+
+      
+      
+      const query = 'SELECT * FROM report_itemsales_records WHERE StoreId = ? AND Date BETWEEN ? AND ?';
+      
+      const tselectedDate = moment(selectedDate).add(6, 'days').format('YYYY-MM-DD');
+    
+      const results = await executeDb(query, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      const dataWithDate = {};
+      const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
+      const totalNetSalesQuery = 'select TotalSales, Date from report_records_r where StoreId = ? and Date BETWEEN ? AND ?';
+      const totalNetSalesResults = await executeDb(totalNetSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      const totalNetSalesWithDate = {};
+      if (totalNetSalesResults.length === 0) {
+        totalNetSalesWithDate[dateRangeKey] = {};
+      }
+      else {
+        totalNetSalesWithDate[dateRangeKey] = totalNetSalesResults;
+      }
+
+      const customer_name_query = 'SELECT CustomerName FROM customers WHERE email = ?';
+      const customer_name_results = await executeDb(customer_name_query, [decoded.username], { fetchAll: true });
+      const ClientNameResult = customer_name_results[0].CustomerName;
+      
+      
+
+
+      if (results.length === 0) {
+        dataWithDate[dateRangeKey] = {};
+      } else {
+        dataWithDate[dateRangeKey] = results;
+      }
+    
+
+      return { status: 200, data: { message: 'success', results: dataWithDate, hasBranchResult: hasBranch, isAdmin: false, posVersion: pos_version_results[0], StoreName:pos_version_results[0].StoreName, LastestReportUpdateTimeResult: pos_version_results[0].LastestReportUpdateTime, ClientNameResult:ClientNameResult, totalNetSalesWithDate:totalNetSalesWithDate  
+
+        }
+      } 
+    }
+    else {
+      return { status: 400, data: { message: 'Invalid store id' } };
+    }
+  } catch (error) {
+    console.error('Error querying customer_store table:', error);
+    return { status: 500, data: { message: 'Internal server error' } };
+  }
+};
+
+app.get('/weeklysales', async (req, res) => {
+  
+  const fselected = req.query.selectedDate;
+
+  const origin_token = req.headers['authorization'];
+
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+
+  const token = origin_token.split(' ')[1];
+  const pos_version_query = 'SELECT * FROM stores WHERE StoreId = ?';
+
+  const result = await fetchWeeklyData(fselected, pos_version_query, token);
+  if (result.status === 200) {
+    res.status(result.status).json({
+      
+      results: [result.data.results],
+      hasBranchResult: result.data.hasBranchResult,
+      isAdmin: false,
+      posVersion: result.data.posVersion,
+      StoreName: result.data.StoreName,
+      LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
+      ClientNameResult: result.data.ClientNameResult,
+      TotalNetSalesWithDate: result.data.totalNetSalesWithDate
+    });
+  }
+  else {
+    res.status(result.status).json(result.data);
+  }
+
+});
 // app.get('/user', async (req, res) => {
 //   if (req.isAuthenticated() && req.user.email !== 'admin@lotus.com.au') {
 //     try {
@@ -1365,7 +1491,6 @@ app.put('/updateCustomer/:cusId', async (req, res) => {
     return res.status(401).json({ success: false, message: 'Authorization header missing' });
   }
 
-  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
   const token = origin_token.split(' ')[1];
   jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
     if (err) {
@@ -1634,11 +1759,22 @@ function listenserver(server) {
   });
 }
 
-// 创建 HTTPS 服务
-const httpsServer = https.createServer(credentials, app);
-// 启动 HTTPS 服务器
-httpsServer.listen(5050, () => {
-  console.log('HTTPS Server running on port 5050');
+// // 创建 HTTPS 服务
+// const httpsServer = https.createServer( app);
+// // const httpsServer = https.createServer(credentials, app);
+// // 启动 HTTPS 服务器
+// httpsServer.listen(5050, () => {
+//   console.log('HTTPS Server running on port 5050');
+// });
+
+
+
+// 创建 HTTP 服务
+const httpServer = http.createServer(app);
+
+// 启动 HTTP 服务器
+httpServer.listen(5050, () => {
+  console.log('HTTP Server running on port 5050');
 });
 
 }
