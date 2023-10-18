@@ -18,6 +18,7 @@ const Dashboardnew = () => {
   const [lastestUpdate, setLastestUpdate] = useState(null);
   const [isUserFetched, setIsUserFetched, getIsUserFetched] = useGetState(false);
   const [isAdmin, setIsAdmin, getIsAdmin] = useGetState(false);
+  const [lastWeekNetSales , setlastWeekNetSales] = useState(null);
 
   const [isLoading, setIsLoading, getIsLoading] = useGetState(true);
   const [dashboard_data, setDashboard_data, getDashboard_data] = useGetState(null);
@@ -282,7 +283,7 @@ useEffect(() => {
         setSalesPieChartData(processItemSalesResults(response.data.itemSalesResults)); 
         setGroupItemSalesData(response.data.groupItemSalesResults);
         setGroupItemSalesPieChartData(processItemSalesResults(response.data.groupItemSalesResults));
-        
+        setlastWeekNetSales(response.data.lastWeekNetSalesResult);
 
         setCashAmount(cashAmount);
         setNonCashPayments(nonCashPayments);
@@ -407,7 +408,8 @@ useEffect(() => {
           setStoreName(response.data.StoreName);
           setUser(response.data.ClientNameResult);
           setLastestUpdate(formatDateTime(response.data.LastestReportUpdateTimeResult));
-          
+          setlastWeekNetSales(response.data.lastWeekNetSalesResult);
+          console.log(response.data.lastWeekNetSalesResult)
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
           setIsLoading(false);
@@ -563,6 +565,10 @@ return (
           {
             Object.keys(getDashboard_data()).map((dateRangeKey, index) => {
               const [startDate, endDate] = dateRangeKey.split(' - ');
+              let oneday=0;
+              if (startDate === endDate){
+                oneday =1;
+              }
 
               if (startDate === selectedDate && endDate === tselectedDate && getDashboard_data()[dateRangeKey].length !== 0) {
                 const dataForThisRange = getDashboard_data()[dateRangeKey][0];
@@ -586,6 +592,33 @@ return (
                         </td>
                         <td className="custom-font-size">
                           {typeof dataForThisRange[key] === 'number' ? parseFloat(dataForThisRange[key].toFixed(2)).toLocaleString() : dataForThisRange[key] || '0'}
+                          {((key === 'TotalNetSales' || key === 'NetSales') && oneday === 1) && (
+                              <span>
+                                {'  '}
+                                {(() => {
+                                  const percentChange = (-(lastWeekNetSales - dataForThisRange[key]) / lastWeekNetSales * 100).toFixed(2);
+                                  let color;
+                                  let arrow;
+
+                                  if (percentChange > 0) {
+                                    color = 'green';
+                                    arrow = <span className="material-icons-sharp" style={{ fontSize: '13px', verticalAlign: 'middle' }}>arrow_upward</span>;
+                                  } else if (percentChange < 0) {
+                                    color = 'red';
+                                    arrow = <span className="material-icons-sharp" style={{ fontSize: '13px',verticalAlign: 'middle' }}>arrow_downward</span>;
+                                  } else {
+                                    color = 'black';
+                                    arrow = '→';
+                                  } 
+
+                                  return (
+                                    <span style={{ color, fontSize: 'small' , fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                    {arrow}{percentChange}%
+                                    </span>
+                                  );
+                                })()}
+                              </span>
+                            )}
                         </td>
                       </tr>
                     ))}

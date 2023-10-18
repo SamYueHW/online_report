@@ -14,11 +14,6 @@ import SalesSummary from './pages/summary/SalesSummary.jsx';
 import Admindashboard from './pages/admin/Admindashboard.jsx';
 
 const App = () => {
-  const [isAdmin, setIsAdmin] = useState(false); // 管理员身份状态
-
-
-
-
 
 
   return (

@@ -388,24 +388,25 @@ app.get('/dashboard',(req, res) => {
       if(decoded.isAdmin === true){
         
         if (decoded.username === process.env.ADMIN_EMAIL_LOTUS) {
-          query = 'SELECT * FROM stores WHERE Category = "melb"';
+          query = 'SELECT * FROM stores WHERE Category = "melb" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "melb"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_IPOS) {
-          query = 'SELECT * FROM stores WHERE Category = "syd"';
+          query = 'SELECT * FROM stores WHERE Category = "syd" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "syd"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_QLD) {
-          query = 'SELECT * FROM stores WHERE Category = "qld"';
+          query = 'SELECT * FROM stores WHERE Category = "qld" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "qld"';
         }
         else if (decoded.username === process.env.ADMIN_EMAIL_ENRICH) {
-          query = 'SELECT * FROM stores';
+          query = 'SELECT * FROM stores ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers';
         }
 
         
         const store_result = await executeDb(query, [], { fetchAll: true });
+
         const storeIds = store_result.map(store => store.StoreId);
         const c_s_query = `
           SELECT cs.*, c.email 
@@ -439,8 +440,6 @@ app.get('/dashboard',(req, res) => {
     }
 });
 
-
-// 定义一个异步函数
 const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken) => {
   try {
     const decoded = await jwtVerify(jwtToken, process.env.JWT_SECRET_KEY);
@@ -521,6 +520,10 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
 
     const sumColumns_r = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
     const sumColumns_h = columnsToSum_h.map(column => `SUM(${column}) AS ${column}`).join(', ');
+    const lastWeekDate = moment(selectedDate).subtract(7, 'days').format('YYYY-MM-DD');
+    let lastWeekNetSalesQuery;
+  
+
  
     if (pos_version_results[0].PosVersion === 1) {
         query = `
@@ -532,6 +535,8 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
             FROM report_records_h 
             WHERE StoreId = ? AND Date BETWEEN ? AND ?
         `;
+        lastWeekNetSalesQuery = `SELECT NetSales FROM report_records_h WHERE StoreId = ? AND Date = ?`;
+
     } else {
         query = `
             SELECT 
@@ -540,6 +545,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
             FROM report_records_r 
             WHERE StoreId = ? AND Date BETWEEN ? AND ?
         `;
+        lastWeekNetSalesQuery = `SELECT TotalNetSales FROM report_records_r WHERE StoreId = ? AND Date = ?`;
     }
       
       const results = await executeDb(query, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
@@ -552,6 +558,8 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       } else {
         dataWithDate[dateRangeKey] = results;
       }
+      const lastWeekNetSales = await executeDb(lastWeekNetSalesQuery, [selectedStoreId, lastWeekDate], { fetchAll: true });
+      const lastWeekNetSalesResult = lastWeekNetSales[0]?.TotalNetSales ?? lastWeekNetSales[0]?.NetSales;
 
       const itemSalesQuery = 'SELECT Description, sum(Amount) as Amount, sum(Qty) as Qty FROM report_itemsales_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description ORDER By Amount DESC';
       const itemSalesResults = await executeDb(itemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
@@ -561,6 +569,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       if (pos_version_results[0].PosVersion === 1) {
         const groupItemSalesQuery = 'SELECT ItemGroup, sum(Amount) as Amount, sum(Qty) as Qty FROM item_group_records_h WHERE StoreId IN (?) AND Date BETWEEN ? AND ? GROUP BY ItemGroup ORDER By Amount DESC';
         groupItemSalesResults = await executeDb(groupItemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      
       }
       const groupItemSalesWithDate= {};
         
@@ -589,7 +598,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       }
       const storeNamesQuery = 'SELECT StoreName FROM stores WHERE StoreId = ?';
       const storeNamesResults = await executeDb(storeNamesQuery, [selectedStoreId], { fetchAll: true });
-
+      
       return { status: 200, data: {
       PosVersion: pos_version_results[0].PosVersion,
       ClientNameResult: ClientNameResult,
@@ -601,6 +610,7 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       paymentResults:paymentSalesWithDate, 
       hasBranchResult: hasBranch,
       groupItemSalesResults: groupItemSalesWithDate,
+      lastWeekNetSalesResult: lastWeekNetSalesResult,
 
       // branchPaymentResults:branchPaymentWithDate, 
       isAdmin: false } };
@@ -612,7 +622,6 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
     return { status: 500, data: { message: 'Internal server error' } };
   }
 };
-
 // 在你的路由处理器中使用这个函数
 app.get('/searchreport', async (req, res) => {
   const fselected = req.query.fselected;
@@ -955,7 +964,7 @@ app.post('/receiveData', async (req, res) => {
 
     const checkStores = await executeDb('SELECT * FROM stores WHERE AppId = ? and StoreId= ?', [appId, shopId], { fetchAll: true });
     if (checkStores.length === 0) {
-      return res.status(400).send('appId and storeId do not match');
+      return res.status(410).send('appId and storeId do not match');
     }
 
     const sList = [appId, timeStamp, nonce, '/receiveData', shopId];
@@ -1118,25 +1127,33 @@ app.delete('/deletestore/:storeId', async (req, res) => {
     if (decoded.isAdmin) {
 
       const storeId = req.params.storeId;
+      let deleteReportQuery;
+      let deleteGroupQuery
       const  pos_version_query = 'SELECT PosVersion FROM stores WHERE StoreId = ?';
       const pos_version_results = await executeDb(pos_version_query, [storeId], { fetchAll: true });
       if (pos_version_results[0].PosVersion === 1) {
-        const deleteReportQuery = 'DELETE FROM report_records_h WHERE StoreId = ?';
-       
+        deleteReportQuery = 'DELETE FROM report_records_h WHERE StoreId = ?';
+        deleteGroupQuery = 'DELETE FROM item_group_records_h WHERE StoreId = ?'
       }
       else {
-        const deleteReportQuery = 'DELETE FROM report_records_r WHERE StoreId = ?';
+        deleteReportQuery = 'DELETE FROM report_records_r WHERE StoreId = ?';
       }
       const deleteQuery = 'DELETE FROM stores WHERE StoreId = ?';
       const deletelinkQuery = 'DELETE FROM customer_store WHERE StoreId = ?';
       const deletePaymentQuery = 'DELETE FROM report_payment_records WHERE StoreId = ?';
       const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE StoreId = ?';
+      const deleteHourlySalesQuery = 'DELETE FROM report_hourlysales_records WHERE StoreId = ?';
       try {
         await executeDb(deleteQuery, [storeId], { commit: true });
         await executeDb(deletelinkQuery, [storeId], { commit: true });
         await executeDb(deletePaymentQuery, [storeId], { commit: true });
         await executeDb(deleteItemSalesQuery, [storeId], { commit: true });
         await executeDb(deleteReportQuery, [storeId], { commit: true });
+        await executeDb(deleteHourlySalesQuery, [storeId], { commit: true });
+        if (pos_version_results[0].PosVersion === 1) {
+          await executeDb(deleteGroupQuery, [storeId], { commit: true });
+        }
+
         res.status(200).json({ message: 'success' });
       }
       catch (error) {

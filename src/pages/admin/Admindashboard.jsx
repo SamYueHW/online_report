@@ -426,6 +426,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
           status = "almost_expired";
       }
 
+
       const matchesStatus =
           selectedStatus === "all" || selectedStatus === "" || status === selectedStatus;
       const matchesCategory = selectedCategory === "" || item.Category === selectedCategory; 
@@ -437,6 +438,18 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
 
       return matchesSearch && matchesConnection && matchesStatus && matchesCategory && matchesCustomerEmail;
     });
+
+    const activeStores = filteredData.filter(item => {
+      const expiredDate = moment.utc(item.ReportLicenseExpire, "YYYY/MM/DD").local();
+      const today = moment().startOf("day");
+      return expiredDate.isAfter(today) && expiredDate.diff(today, "days") >= 10;
+  });
+  
+  const almostExpiredStores = filteredData.filter(item => {
+      const expiredDate = moment.utc(item.ReportLicenseExpire, "YYYY/MM/DD").local();
+      const today = moment().startOf("day");
+      return expiredDate.isAfter(today) && expiredDate.diff(today, "days") < 10;
+  });
     const handleEdit = (storeId) => {
         navigate(`/edit-store?store=${storeId}`);
     };
@@ -557,6 +570,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
           onChange={(e) => setCustomerListEmail(e.target.value)}
           placeholder="Search Customer Email"
         />
+        
       </div>
           <div className="customer-list" style={{ maxHeight: '400px', overflowY: 'scroll' }}>
          
@@ -657,6 +671,16 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
               onChange={handleCustomerEmailSearchChange}
               placeholder="Search Customer Email"
           />
+          <div style={{ marginLeft: '200px' }}>
+            <p style={{ fontWeight: 'bold' }}>Total Stores: {filteredData.length}</p>
+            <p style={{ fontWeight: 'bold' }}>
+              Active Stores: <span>
+                {activeStores.length + almostExpiredStores.length}
+              </span>
+            </p>
+          </div>
+
+
          
           { 
         dashboard_data ? (
