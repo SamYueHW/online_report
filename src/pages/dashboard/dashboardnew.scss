@@ -344,7 +344,7 @@ main .search_btn:hover, .search_btn:focus, .search_btn:active{
   }
   
   /* Button style */
-button {
+.ripple {
     display: block;
     margin-top: 6px;
     margin-bottom: 10px;
@@ -360,7 +360,38 @@ button {
     outline: none;
     border-radius: var(--border-radius-1);
 }
-
+.store-button {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 12px 18px;
+    font-size: 1vw;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: white;
+    background-color: #61b3f7;
+    box-shadow: 0 0 4px #999;
+    outline: none;
+    border-radius: var(--border-radius-1);
+}
+.edit-button,.change-pass,.commonbtn, .delete-store-button,.register-button,.add-store-button,.customer_list_btn {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 12px 18px;
+    font-size: 1vw;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: white;
+    background-color: #61b3f7;
+    box-shadow: 0 0 4px #999;
+    outline: none;
+    border-radius: var(--border-radius-1);
+}
 
 .daily-report{
     margin-top: 2rem;
@@ -429,9 +460,10 @@ main table tbody tr:last-child td{
 }
 
 
-main table tbody tr:hover{
+table:not(.sales-analysis-table):not(.sales-analysis-gp-table) tbody tr:hover {
     background: var(--color-light);
 }
+
 .middle .row:hover{
     background: var(--color-light);
 }
@@ -530,6 +562,45 @@ main .daily-report a{
 main table tbody td.left-align {
     color:#000
 }
+
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* 模态窗口主体样式 */
+  .modal {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    // width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    width: auto;
+  }
+  
+  /* 让所有 label 元素垂直排列 */
+  .modal label {
+    display: block;
+    margin-bottom: 15px;
+  }
+  
+  /* 给 input 和 select 控件添加边框 */
+  .modal input,
+  .modal select{
+    border: 1px solid #ccc;
+    padding: 10px;
+    width: 100%;
+  }
 
 // /*======payment-summary========*/
 .right .payment-summary{
@@ -1120,7 +1191,7 @@ html,body{
     }
     .sider > aside {
         width: 200px;
-        z-index: 999;
+        z-index: 1010;
     }
 
     .ripple{
@@ -1128,6 +1199,7 @@ html,body{
         margin-top: 1rem;
         display: block;
     }
+
     .header .profile{
         gap: 1rem;
     }

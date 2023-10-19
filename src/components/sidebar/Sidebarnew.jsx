@@ -9,12 +9,12 @@ const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, is
   const counter = 6;
   const location = useLocation();
   const navigate = useNavigate();
+  const [isWeeklySalesSubMenuOpen, setIsWeeklySalesSubMenuOpen] = useState(false); // 新状态来控制子菜单的展开或收起
 
+  const toggleWeeklySalesSubMenu = () => {
+    setIsWeeklySalesSubMenuOpen(!isWeeklySalesSubMenuOpen);
+  };
 
-
-  
-
-  
   // 使用React状态来控制侧边栏是否显示
   const [isSidebarVisible, setSidebarVisible] = useState(false);
 
@@ -68,19 +68,14 @@ const Sidebarnew = ({ user, onLogout, showSidebar, setShowSidebar, hasBranch, is
           <span className="material-icons-sharp">insights</span>
           <h3>Analytics</h3>
         </a>
-        
-        {/* <a href="https://buy.stripe.com/test_cN2g1C8113rZ9xKeUU">
-          <span className="material-icons-sharp">shopping_cart</span>
-          <h3>Renew Plan</h3>
-        </a> */}
+        {posVersion === 0 && (
+          <a href="/weeklySales" className={location.pathname === "/weeklySales" ? styles.active : ""}>
+            <span className="material-icons-sharp">calendar_view_week</span>
+            <h3>Weekly Sales Analysis</h3>
+          </a>
+        )}
 
-{/* 
-      {posVersion === 0 && (
-        <a href="#">
-          <span className="material-icons-sharp">calendar_view_week</span>
-          <h3>Weekly Sales</h3>
-        </a>
-      )} */}
+                
 
         {hasBranch && (
         <a onClick={handleSelectBranch}>

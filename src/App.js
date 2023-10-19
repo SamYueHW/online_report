@@ -1,23 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import jwtDecode from 'jwt-decode';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Register from './pages/register/Register.jsx';
-import Login from './pages/login/Login.jsx';
-import Dashboard from './pages/dashboard/Dashboardnew.jsx';
-import EditStore from './pages/admin/EditStore.jsx';
-import StoreHistory from './pages/storehistory/StoreHistory.jsx';
-import NotificationSetup from './pages/notification/NotificationSetup.jsx';
-import NotificationList from './pages/notification/NotificationList.jsx';
-import CheckStores from './pages/dashboard/CheckStores.jsx';
-import SalesSummary from './pages/summary/SalesSummary.jsx';  
+import './pages/dashboard/dashboardnew.scss';
+import './pages/weeklysales/WeeklySales.scss';
 
-import Admindashboard from './pages/admin/Admindashboard.jsx';
+const Register = lazy(() => import('./pages/register/Register.jsx'));
+const Login = lazy(() => import('./pages/login/Login.jsx'));
+const Dashboard = lazy(() => import('./pages/dashboard/Dashboardnew.jsx'));
+const EditStore = lazy(() => import('./pages/admin/EditStore.jsx'));
+const StoreHistory = lazy(() => import('./pages/storehistory/StoreHistory.jsx'));
+const NotificationSetup = lazy(() => import('./pages/notification/NotificationSetup.jsx'));
+const NotificationList = lazy(() => import('./pages/notification/NotificationList.jsx'));
+const CheckStores = lazy(() => import('./pages/dashboard/CheckStores.jsx'));
+const SalesSummary = lazy(() => import('./pages/summary/SalesSummary.jsx'));
+const Admindashboard = lazy(() => import('./pages/admin/Admindashboard.jsx'));
+const WeeklySales = lazy(() => import('./pages/weeklysales/WeeklySales.jsx'));
+
+// import WeeklySalesGP from './pages/weeklysales/WeeklySalesGP.jsx';
 
 const App = () => {
 
 
   return (
     <BrowserRouter>
+    {/* <Suspense fallback={<div>Loading...</div>}> */}
       <Routes>
         <Route path="/edit-store" element={<EditStore />} />
         <Route path="/store-history" element={<StoreHistory />} />
@@ -28,10 +33,13 @@ const App = () => {
         <Route path="/notification-setup" element={<NotificationSetup />} />
         <Route path="/notification-list" element={<NotificationList />} />
         <Route path="/checkStores" element={<CheckStores />} />
+        <Route path="/weeklySales" element={<WeeklySales />} />
+        {/* <Route path="/weeklySales_GP" element={<WeeklySalesGP />} /> */}
 
         <Route path="/admin-dashboard" element={<Admindashboard />} />
 
       </Routes>
+      {/* </Suspense> */}
     </BrowserRouter>
   );
 };

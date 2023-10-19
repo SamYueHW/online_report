@@ -376,7 +376,7 @@ useEffect(() => {
           return;
         }
         if (!response.data.isAdmin && response.data.results) {
-          
+
           setposVersion(response.data.PosVersion);
           
           // console.log(response.data.results.NetSales);
@@ -459,6 +459,7 @@ useEffect(() => {
 
 
 else if (!getIsLoading() && !getIsAdmin() ) {
+  console.log(posVersion)
 return (
 
 <div className="container">
@@ -570,6 +571,7 @@ return (
                 oneday =1;
               }
 
+              
               if (startDate === selectedDate && endDate === tselectedDate && getDashboard_data()[dateRangeKey].length !== 0) {
                 const dataForThisRange = getDashboard_data()[dateRangeKey][0];
                 const keysToRender = showAll ? Object.keys(dataForThisRange) : Array.from(defaultKeysToShow);  // 根据 defaultKeysToShow 筛选

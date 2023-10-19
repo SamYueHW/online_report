@@ -2,7 +2,6 @@ import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 // import "./dashboardnew.scss";
 import Sidebar from '../../components/sidebar/Sidebarnew';
-import Adminsidebar from '../../components/sidebar/Adminsidebar';
 import { useNavigate } from 'react-router-dom';
 import useGetState from '../../hooks/useGetState';
 import moment from 'moment-timezone';
@@ -12,7 +11,7 @@ import Dropdown from '../../components/dropdown/Dropdown';
 import Mchart from '../../components/mchart/Mchart';
 import PeakLineChart from '../../components/linechart/PeakLineChart';
 import "./SalesSummary.scss";
-import { el } from 'date-fns/locale';
+
 
 
 const SalesSummary = () => {
@@ -26,7 +25,6 @@ const SalesSummary = () => {
   const [PeakLineChartData, setPeakLineChartData] = useState([[],[]]);
 
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [selectedTotalNetSales, setSelectedTotalNetSales] = useState(0);
   const [comparedTotalNetSales, setComparedTotalNetSales] = useState(0);
@@ -691,6 +689,7 @@ const processDashboardData = (dashboardData) => {
           
           processDashboardData(response.data.results);
           setHasBranch(response.data.hasBranchResult);
+
           setPosVersion(response.data.posVersion['PosVersion']);
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
@@ -811,7 +810,7 @@ const processDashboardData = (dashboardData) => {
               checkPasswordsMatch();  // 在这里也检查密码是否匹配
             }} 
           />
-</label>
+        </label>
         <label>
           Confirm Password: <input type="password" style={{ width: '150px' }} value={confirmPassword} 
                  onChange={(e) => { 
@@ -1027,7 +1026,7 @@ const processDashboardData = (dashboardData) => {
             (
               <>
                 <h2>Sales Summary Chart</h2>
-                <div className='chart'>
+                <div className='chart'style={{ marginBottom: '100px' }} >
                   <Mchart dateType={dateType} data={NetSalesByDate} />
                 </div>
               </>
@@ -1036,7 +1035,7 @@ const processDashboardData = (dashboardData) => {
               dateType === "Hourly" && PeakLineChartData  ? (
                 <>
                   <h2>Hourly Sales Chart</h2>
-                  <div className='chart'>
+                  <div className='chart' style={{ marginBottom: '100px' }}>
                     <PeakLineChart data={PeakLineChartData}  />
                   </div>
                 </>

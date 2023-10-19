@@ -21,7 +21,7 @@ if (cluster.isMaster) {
 } else {
 
 const express = require('express');
-const http = require('http');
+// const http = require('http');
 const winston = require('winston');
 
 // const mysql = require('mysql');
@@ -373,10 +373,16 @@ app.get('/checkAccount', (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 app.get('/dashboard',(req, res) => {
     try {
       
       const origin_token = req.headers['authorization'];  // 打印所有请求头，以便调试
+      // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
       const token = origin_token.split(' ')[1]; // 获取 JWT Token
       // 验证并解码 JWT
       jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
@@ -386,7 +392,6 @@ app.get('/dashboard',(req, res) => {
 
       
       if(decoded.isAdmin === true){
-        
         if (decoded.username === process.env.ADMIN_EMAIL_LOTUS) {
           query = 'SELECT * FROM stores WHERE Category = "melb" ORDER BY storeId DESC';
           customer_query = 'SELECT * FROM customers WHERE Category = "melb"';
@@ -404,6 +409,7 @@ app.get('/dashboard',(req, res) => {
           customer_query = 'SELECT * FROM customers';
         }
 
+        
         
         const store_result = await executeDb(query, [], { fetchAll: true });
 
@@ -627,6 +633,11 @@ app.get('/searchreport', async (req, res) => {
   const fselected = req.query.fselected;
   const tselected = req.query.tselected;
   const origin_token = req.headers['authorization'];
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
   const token = origin_token.split(' ')[1];
   const pos_version_query = 'SELECT PosVersion, LastestReportUpdateTime,StoreName FROM stores WHERE StoreId = (?)';
 
@@ -759,6 +770,11 @@ app.get('/searchSalesSummary', async (req, res) => {
   const dateType = req.query.dateType;
  
   const origin_token = req.headers['authorization'];
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
   const token = origin_token.split(' ')[1];
   const pos_version_query = 'SELECT * FROM stores WHERE StoreId = ?';
   
@@ -832,6 +848,101 @@ app.get('/searchSalesSummary', async (req, res) => {
   }
 });
 
+const fetchWeeklyData = async (selectedDate, posVersionQuery, jwtToken) => {
+  try {
+    const decoded = await jwtVerify(jwtToken, process.env.JWT_SECRET_KEY);
+
+    const storeIds = decoded.storeIds;
+    const selectedStoreId = decoded.selectedStoreId;
+    const pos_version_results = await executeDb(posVersionQuery, [selectedStoreId], { fetchAll: true });
+
+    if (selectedStoreId && storeIds.includes(selectedStoreId) && pos_version_results[0].PosVersion === 0) {
+      let hasBranch = false;
+      if (storeIds.length > 1) {
+        hasBranch = true;
+      }
+
+      
+      
+      const query = 'SELECT * FROM report_itemsales_records WHERE StoreId = ? AND Date BETWEEN ? AND ?';
+      
+      const tselectedDate = moment(selectedDate).add(6, 'days').format('YYYY-MM-DD');
+    
+      const results = await executeDb(query, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      const dataWithDate = {};
+      const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
+      const totalNetSalesQuery = 'select TotalSales, Date from report_records_r where StoreId = ? and Date BETWEEN ? AND ?';
+      const totalNetSalesResults = await executeDb(totalNetSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      const totalNetSalesWithDate = {};
+      if (totalNetSalesResults.length === 0) {
+        totalNetSalesWithDate[dateRangeKey] = {};
+      }
+      else {
+        totalNetSalesWithDate[dateRangeKey] = totalNetSalesResults;
+      }
+
+      const customer_name_query = 'SELECT CustomerName FROM customers WHERE email = ?';
+      const customer_name_results = await executeDb(customer_name_query, [decoded.username], { fetchAll: true });
+      const ClientNameResult = customer_name_results[0].CustomerName;
+      
+      
+
+
+      if (results.length === 0) {
+        dataWithDate[dateRangeKey] = {};
+      } else {
+        dataWithDate[dateRangeKey] = results;
+      }
+    
+
+      return { status: 200, data: { message: 'success', results: dataWithDate, hasBranchResult: hasBranch, isAdmin: false, posVersion: pos_version_results[0], StoreName:pos_version_results[0].StoreName, LastestReportUpdateTimeResult: pos_version_results[0].LastestReportUpdateTime, ClientNameResult:ClientNameResult, totalNetSalesWithDate:totalNetSalesWithDate  
+
+        }
+      } 
+    }
+    else {
+      return { status: 400, data: { message: 'Invalid store id' } };
+    }
+  } catch (error) {
+    console.error('Error querying customer_store table:', error);
+    return { status: 500, data: { message: 'Internal server error' } };
+  }
+};
+
+app.get('/weeklysales', async (req, res) => {
+  
+  const fselected = req.query.selectedDate;
+
+  const origin_token = req.headers['authorization'];
+
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+
+  const token = origin_token.split(' ')[1];
+  const pos_version_query = 'SELECT * FROM stores WHERE StoreId = ?';
+
+  const result = await fetchWeeklyData(fselected, pos_version_query, token);
+  if (result.status === 200) {
+    res.status(result.status).json({
+      
+      results: [result.data.results],
+      hasBranchResult: result.data.hasBranchResult,
+      isAdmin: false,
+      posVersion: result.data.posVersion,
+      StoreName: result.data.StoreName,
+      LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
+      ClientNameResult: result.data.ClientNameResult,
+      TotalNetSalesWithDate: result.data.totalNetSalesWithDate
+    });
+  }
+  else {
+    res.status(result.status).json(result.data);
+  }
+
+});
 // app.get('/user', async (req, res) => {
 //   if (req.isAuthenticated() && req.user.email !== 'admin@lotus.com.au') {
 //     try {
@@ -1382,7 +1493,6 @@ app.put('/updateCustomer/:cusId', async (req, res) => {
     return res.status(401).json({ success: false, message: 'Authorization header missing' });
   }
 
-  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
   const token = origin_token.split(' ')[1];
   jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
     if (err) {
@@ -1652,10 +1762,21 @@ function listenserver(server) {
 }
 
 // 创建 HTTPS 服务
+// const httpsServer = https.createServer( app);
 const httpsServer = https.createServer(credentials, app);
 // 启动 HTTPS 服务器
 httpsServer.listen(5050, () => {
   console.log('HTTPS Server running on port 5050');
 });
+
+
+
+// // 创建 HTTP 服务
+// const httpServer = http.createServer(app);
+
+// // 启动 HTTP 服务器
+// httpServer.listen(5050, () => {
+//   console.log('HTTP Server running on port 5050');
+// });
 
 }
