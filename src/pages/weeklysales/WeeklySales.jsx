@@ -9,9 +9,6 @@ import './WeeklySales.scss';
 import SalesAnalysisTable from '../../components/table/SalesAnalysisTable';
 import SalesAnalysisGPTable from '../../components/table/SalesAnalysisGPTable';
 
-
-
-
 import DateRangePickerValue from "../../components/datepicker/Datepicker";
 
 
@@ -322,7 +319,7 @@ const WeeklySales = () => {
                       <DateRangePickerValue defaultDate={moment(australiaMoment).day(australiaMoment.day() === 0 ? -6 : 1).startOf('week')} onDateChange={handleDateChange} />
                       <button className="ripple" onClick={handleSearch}>Search</button>
                       </div>
-                     <div className="tab-container">
+                     <div className="tab-container" style={{ marginBottom: '100px' }}>
                         <div className="table_container">  {/* 新的外部容器 */}
                         <button onClick={showSalesAnalysis} className="analysis-button">Sales Analysis</button>
                         <button onClick={showGpAnalysis} className="analysis-button">GP Analysis</button>

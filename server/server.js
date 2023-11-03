@@ -2,6 +2,11 @@ const cluster = require('cluster');
 const { da } = require('date-fns/locale');
 const os = require('os');
 
+const cron = require('node-cron');
+
+// // 全局变量，用于追踪/dashboard路由的访问次数
+// let trackDashboardAccess = 0;
+
 if (cluster.isMaster) {
   // 主进程逻辑
   const numCPUs = os.cpus().length;
@@ -21,7 +26,7 @@ if (cluster.isMaster) {
 } else {
 
 const express = require('express');
-const http = require('http');
+// const http = require('http');
 const winston = require('winston');
 
 // const mysql = require('mysql');
@@ -32,7 +37,6 @@ const jwt = require('jsonwebtoken');
 
 const jwtVerify = util.promisify(jwt.verify);
 
-// const socketIO = require('socket.io');
 
 const bcrypt = require("bcrypt") // Importing bcrypt package
 const crypto = require('crypto');
@@ -50,6 +54,8 @@ const { darkScrollbar } = require('@mui/material');
 const cors = require('cors');
 const { Console, group } = require('console');
 const moment = require('moment');
+const momentlocal = require('moment-timezone');
+
 
 
 const path = require('path');
@@ -61,11 +67,11 @@ const fs = require('fs');
 const https = require('https');
 
 // 读取证书文件
-// const privateKey  = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.key", 'utf8');
-// const certificate = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.pem", 'utf8');
-// const ca = fs.readFileSync('C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/ca.pem', 'utf8');
+const privateKey  = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.key", 'utf8');
+const certificate = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.pem", 'utf8');
+const ca = fs.readFileSync('C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/ca.pem', 'utf8');
 
-// const credentials = { key: privateKey, cert: certificate, ca: ca };
+const credentials = { key: privateKey, cert: certificate, ca: ca };
 
 // Remove the default Console log transport
 winston.remove(winston.transports.Console);
@@ -83,8 +89,8 @@ app.use(express.json({ type: 'application/json' }));
 
 
 app.use(cors({
-  origin: 'http://localhost:3000', // 指定接受请求的源
-  // origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
+  // origin: 'http://localhost:3000', // 指定接受请求的源
+  origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
   credentials: true,  // 允许跨域携带凭证
 }));
 
@@ -264,12 +270,15 @@ app.post('/checkStores', (req, res) => {
           const columnsToSum = ['TotalNetSales', 
           'TotalTransaction', 
           'TotalEftpos', 
-          'NegativeSalesAmount'];  
+          'NegativeSalesAmount','GSTItemSales','GSTFreeItemSales','GSTCollected'];  
 
           const columnsToSum_h = ['NetSales',
           'TotalTransaction',
           'TotalEftposPayment', 
-          'VoidAmount'
+          'VoidAmount',
+          'TotalGST',
+          'TotalSalesExTax',
+
           ];
           const sumColumns = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
           const sumColumns_h = columnsToSum_h.map(column => `SUM(${column}) AS ${column}`).join(', ');
@@ -317,6 +326,7 @@ app.post('/checkStores', (req, res) => {
             storeNames: storeNamesResults,
             results: branchPaymentResults
           };
+
           
         }
         // console.log(branchPaymentWithDate);
@@ -382,7 +392,6 @@ app.get('/dashboard',(req, res) => {
   if (!origin_token) {
     return res.status(401).json({ success: false, message: 'Authorization header missing' });
   }
-
       const token = origin_token.split(' ')[1]; // 获取 JWT Token
       // 验证并解码 JWT
       jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
@@ -412,6 +421,7 @@ app.get('/dashboard',(req, res) => {
         
         
         const store_result = await executeDb(query, [], { fetchAll: true });
+
         const storeIds = store_result.map(store => store.StoreId);
         const c_s_query = `
           SELECT cs.*, c.email 
@@ -445,8 +455,6 @@ app.get('/dashboard',(req, res) => {
     }
 });
 
-
-// 定义一个异步函数
 const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken) => {
   try {
     const decoded = await jwtVerify(jwtToken, process.env.JWT_SECRET_KEY);
@@ -568,10 +576,6 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       const lastWeekNetSales = await executeDb(lastWeekNetSalesQuery, [selectedStoreId, lastWeekDate], { fetchAll: true });
       const lastWeekNetSalesResult = lastWeekNetSales[0]?.TotalNetSales ?? lastWeekNetSales[0]?.NetSales;
 
-
-
-   
-
       const itemSalesQuery = 'SELECT Description, sum(Amount) as Amount, sum(Qty) as Qty FROM report_itemsales_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description ORDER By Amount DESC';
       const itemSalesResults = await executeDb(itemSalesQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
       const paymentQuery = 'SELECT Description, sum(Amount) as Amount FROM report_payment_records WHERE StoreId = ? AND Date BETWEEN ? AND ? GROUP BY Description';
@@ -633,7 +637,6 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
     return { status: 500, data: { message: 'Internal server error' } };
   }
 };
-
 // 在你的路由处理器中使用这个函数
 app.get('/searchreport', async (req, res) => {
   const fselected = req.query.fselected;
@@ -1081,7 +1084,7 @@ app.post('/receiveData', async (req, res) => {
 
     const checkStores = await executeDb('SELECT * FROM stores WHERE AppId = ? and StoreId= ?', [appId, shopId], { fetchAll: true });
     if (checkStores.length === 0) {
-      return res.status(400).send('appId and storeId do not match');
+      return res.status(410).send('appId and storeId do not match');
     }
 
     const sList = [appId, timeStamp, nonce, '/receiveData', shopId];
@@ -1244,25 +1247,33 @@ app.delete('/deletestore/:storeId', async (req, res) => {
     if (decoded.isAdmin) {
 
       const storeId = req.params.storeId;
+      let deleteReportQuery;
+      let deleteGroupQuery
       const  pos_version_query = 'SELECT PosVersion FROM stores WHERE StoreId = ?';
       const pos_version_results = await executeDb(pos_version_query, [storeId], { fetchAll: true });
       if (pos_version_results[0].PosVersion === 1) {
-        const deleteReportQuery = 'DELETE FROM report_records_h WHERE StoreId = ?';
-       
+        deleteReportQuery = 'DELETE FROM report_records_h WHERE StoreId = ?';
+        deleteGroupQuery = 'DELETE FROM item_group_records_h WHERE StoreId = ?'
       }
       else {
-        const deleteReportQuery = 'DELETE FROM report_records_r WHERE StoreId = ?';
+        deleteReportQuery = 'DELETE FROM report_records_r WHERE StoreId = ?';
       }
       const deleteQuery = 'DELETE FROM stores WHERE StoreId = ?';
       const deletelinkQuery = 'DELETE FROM customer_store WHERE StoreId = ?';
       const deletePaymentQuery = 'DELETE FROM report_payment_records WHERE StoreId = ?';
       const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE StoreId = ?';
+      const deleteHourlySalesQuery = 'DELETE FROM report_hourlysales_records WHERE StoreId = ?';
       try {
         await executeDb(deleteQuery, [storeId], { commit: true });
         await executeDb(deletelinkQuery, [storeId], { commit: true });
         await executeDb(deletePaymentQuery, [storeId], { commit: true });
         await executeDb(deleteItemSalesQuery, [storeId], { commit: true });
         await executeDb(deleteReportQuery, [storeId], { commit: true });
+        await executeDb(deleteHourlySalesQuery, [storeId], { commit: true });
+        if (pos_version_results[0].PosVersion === 1) {
+          await executeDb(deleteGroupQuery, [storeId], { commit: true });
+        }
+
         res.status(200).json({ message: 'success' });
       }
       catch (error) {
@@ -1716,65 +1727,42 @@ async function find_client_socket(store_id) {
 }
 
 
-function listenserver(server) {
-  const webpage = new Map();
 
-  io.on('connection', function (socket) {
-    // Store webpage socket ID and connection details
-    socket.on('message', function (data) {
-      console.log(data);
-    });
-    winston.info('SocketIO > Connected socket ' + socket.id);
+  // cron.schedule('17 2 * * *', async () => {
+  //   console.log('Running daily tasks...');
 
-    socket.on('login', function (data) {
-      // data = store_id
-      update_socket_sql(data, socket.id);
-    });
+  //  const totalStoresQuery = 'SELECT COUNT(*) as totalStores FROM stores';
+  //   const totalStoresResults = await executeDb(totalStoresQuery, [], { fetchAll: true });
+    
+  //   const ausDate = momentlocal().tz('Australia/Sydney').format('YYYY-MM-DD');
+  //   // 将数据保存到app_matics数据库
+  //   const insertQuery = 'INSERT INTO app_metrics (Date, ReportAccess, TotalStore) VALUES (?, ?, ?)';
+  //    executeDb(insertQuery, [ausDate, trackDashboardAccess, totalStoresResults.totalStores], { commit: true });
 
-    socket.on('sendData', function (data) {
-      const callback = userCallbacks[data.requestId];
-      
-      if (callback) {
-        // 触发关联的回调函数，并传递数据
-        callback(data.data);
-      } else {
-        console.log('No callback function for requestId:', requestId);
-      }
-    });
-    socket.on('disconnect', function () {
-      const connection = mysql.createConnection(connectionConfig);
-      connection.connect((error) => {
-        if (error) {
-          console.error('Error connecting to the database:', error);
-        }
-      });
-      const updateQuery = `UPDATE stores SET connection = 0 WHERE client_socket_id = ?`;
-      connection.query(updateQuery, [socket.id], (error, results) => {
-        if (error) {
-          console.error('Error executing UPDATE query:', error);
-        } 
-      });
-      connection.end();
-    });
-  });
-}
+  //   //重置trackDashboardAccess变量
+  //   trackDashboardAccess = 0;
+  // });
 
-// // 创建 HTTPS 服务
+
+
+
+
+// 创建 HTTPS 服务
 // const httpsServer = https.createServer( app);
-// // const httpsServer = https.createServer(credentials, app);
-// // 启动 HTTPS 服务器
-// httpsServer.listen(5050, () => {
-//   console.log('HTTPS Server running on port 5050');
-// });
-
-
-
-// 创建 HTTP 服务
-const httpServer = http.createServer(app);
-
-// 启动 HTTP 服务器
-httpServer.listen(5050, () => {
-  console.log('HTTP Server running on port 5050');
+const httpsServer = https.createServer(credentials, app);
+// 启动 HTTPS 服务器
+httpsServer.listen(5050, () => {
+  console.log('HTTPS Server running on port 5050');
 });
+
+
+
+// // 创建 HTTP 服务
+// const httpServer = http.createServer(app);
+
+// // 启动 HTTP 服务器
+// httpServer.listen(5050, () => {
+//   console.log('HTTP Server running on port 5050');
+// });
 
 }

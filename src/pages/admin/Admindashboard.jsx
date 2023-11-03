@@ -8,7 +8,7 @@ import useGetState from '../../hooks/useGetState';
 import { CircularProgress } from '@mui/material';
 import './admindashboard.scss';
 import DatePicker from 'react-datepicker';
-import SalesPieChart from "../../components/chart/SalesPieChart";
+
 
 const Admindashboard = ({ }) => {
     const navigate = useNavigate();
@@ -101,8 +101,8 @@ const Admindashboard = ({ }) => {
             <p>Email: {customer.email}</p>
           </div>
           <div className="customer-actions">
-            <button style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => handleEditCustomer(customer.cus_id)}>Edit</button>
-            <button style={{ fontSize: '12px', padding: '6px 12px' }} className="delete-store-button" onClick={() => handleDeleteCustomer(customer.cus_id)}>Delete</button>
+            <button className="commonbtn" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => handleEditCustomer(customer.cus_id)}>Edit</button>
+            <button className="commonbtn" style={{ fontSize: '12px', padding: '6px 12px' }} className="delete-store-button" onClick={() => handleDeleteCustomer(customer.cus_id)}>Delete</button>
           </div>
         </div>
       ));
@@ -503,8 +503,8 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                 <option value="Hospitality">Hospitality</option>
               </select>
             </label>
-            <button onClick={handleSubmit}>Submit</button>
-            <button onClick={() => setIsAddStoreModalOpen(false)}>Cancel</button>
+            <button className="commonbtn" onClick={handleSubmit}>Submit</button>
+            <button className="commonbtn" onClick={() => setIsAddStoreModalOpen(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -542,8 +542,8 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                     <input type="text" value={customerData.Address}
                             onChange={(e) => setCustomerData({ ...customerData, address: e.target.value })} />
                 </label>
-                <button onClick={handleRegisterCustomer}>Submit</button>
-                <button onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button className="commonbtn" onClick={handleRegisterCustomer}>Submit</button>
+                <button className="commonbtn" onClick={() => setIsModalOpen(false)}>Cancel</button>
             </div>
         </div>
     )}
@@ -576,7 +576,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
          
             {renderCustomerList()}
           </div>
-          <button onClick={() => setIsCustomerListModalOpen(false)}>Close</button>
+          <button className="commonbtn" onClick={() => setIsCustomerListModalOpen(false)}>Close</button>
         </div>
       </div>
     )}
@@ -625,8 +625,8 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
         />
       </label>
       {/* 可以根据需要添加更多字段 */}
-      <button onClick={handleUpdateCustomer}>Submit</button>
-      <button onClick={() => setEditingCustomer(null)}>Cancel</button>
+      <button className="commonbtn" onClick={handleUpdateCustomer}>Submit</button>
+      <button className="commonbtn" onClick={() => setEditingCustomer(null)}>Cancel</button>
     </div>
   </div>
 )}
@@ -705,8 +705,9 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
             } else if (status === "expired") {
               statusClassName = "expired-status";
             }
-  
+            
             return (
+              
               <div key={item.StoreId} className={`store ${statusClassName}`}>
                 <div className="store-container">
                 <div className="left-section">
@@ -717,10 +718,14 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                       <p>Store Name: {item.StoreName}</p>
                     </div>
                     <div className="store-id">
-                      <p>Shop ID: {item.StoreId}</p>
+                    <p style={{
+                        userSelect: item.LastestReportUpdateTime === null ? "text" : "none"
+                    }}>Shop ID: {item.StoreId}</p>
                     </div>
                     <div className="appid">
-                      <p>App ID: {item.AppId}</p>
+                    <p style={{
+                        userSelect: item.LastestReportUpdateTime === null ? "text" : "none"
+                    }}>App ID: {item.AppId}</p>
                     </div>
                     <div className="pos">
                     <p>

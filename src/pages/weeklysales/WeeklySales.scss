@@ -7,6 +7,7 @@
    
     overflow-x: auto; /* 如果表格宽度超过容器宽度，则在x轴上滚动 */
     overflow-y: auto; /* 如果表格高度超过容器高度，则在y轴上滚动 */
+    user-select: text; 
   }
 @media  (max-width: 515px) {
   .table-scrollable-container{
@@ -87,7 +88,7 @@
   .sticky-header {
     background-color: #f2f2f2;  /* 背景颜色 */
     position: sticky;
-    top: 38px;  /* 固定在顶部 */
+    top: 36px;  /* 固定在顶部 */
     z-index: 1000;  /* z-index 确保它在其他内容上面 */
   }
   
@@ -111,5 +112,12 @@
     left: 0;  /* 也固定在左侧 */
     z-index: 1001;  /* 这个 z-index 应该比其他粘性元素的 z-index 高，以确保它总是在顶部 */
   }
-    
-  
+@media screen and (max-width: 935px) {    
+  .date_mui {
+    display: flex;
+    align-items: center;  /* 垂直居中对齐 */
+}
+.date_mui .ripple {
+  margin-left: 20px;  /* 或者使用 margin-right 在 DateRangePickerValue 上 */
+}
+}

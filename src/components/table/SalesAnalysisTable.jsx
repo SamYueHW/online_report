@@ -123,7 +123,7 @@ const totalAdjustmentsForWeek = dailyAdjustments.reduce((acc, val) => acc + val,
           <td></td>
         </tr>
         <tr style={{ fontWeight: 'bold' }}>
-            <td>*Adjustments:</td>
+            <td className="sticky-description">*Adjustments:</td>
             {dailyAdjustments.map((adj, index) => daysWithData[index] && (
                 <>
                 <td key={`adjustments-${index}`}>{Math.abs(adj) < 1e-10 ? '0.00' : adj.toFixed(2)}</td>
@@ -138,7 +138,7 @@ const totalAdjustmentsForWeek = dailyAdjustments.reduce((acc, val) => acc + val,
             <td></td>
         </tr>
         <tr style={{ fontWeight: 'bold' }}>
-            <td>Total Net Sales:</td>
+            <td className="sticky-description">Total Net Sales:</td>
             {totalNetSalesPerDay.map((sales, index) => daysWithData[index] && (
                 <>
                 <td key={`net-sales-${index}`}>{sales.toFixed(2)}</td>

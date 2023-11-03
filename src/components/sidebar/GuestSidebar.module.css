@@ -117,14 +117,14 @@ aside .sidebar a span{
 
 aside .sidebar a:nth-last-child(1):not(.submenu a) {
     position: absolute;
-    bottom: 3rem;
+    bottom: 5.5rem;
     width: 100%;
   }
   
 
 aside .sidebar a:nth-last-child(2) {
     position: absolute;
-    bottom: 6rem;  /* 距离底部 6rem */
+    bottom: 9rem;  /* 距离底部 6rem */
     width: 100%;
 }
 

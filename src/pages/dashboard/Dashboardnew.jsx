@@ -283,8 +283,8 @@ useEffect(() => {
         setSalesPieChartData(processItemSalesResults(response.data.itemSalesResults)); 
         setGroupItemSalesData(response.data.groupItemSalesResults);
         setGroupItemSalesPieChartData(processItemSalesResults(response.data.groupItemSalesResults));
-        
         setlastWeekNetSales(response.data.lastWeekNetSalesResult);
+
         setCashAmount(cashAmount);
         setNonCashPayments(nonCashPayments);
         setBranchPaymentData(response.data.branchPaymentResults);
@@ -409,7 +409,7 @@ useEffect(() => {
           setUser(response.data.ClientNameResult);
           setLastestUpdate(formatDateTime(response.data.LastestReportUpdateTimeResult));
           setlastWeekNetSales(response.data.lastWeekNetSalesResult);
-
+          
           setIsAdmin(response.data.isAdmin);
           setIsUserFetched(true);
           setIsLoading(false);
@@ -459,7 +459,7 @@ useEffect(() => {
 
 
 else if (!getIsLoading() && !getIsAdmin() ) {
-  console.log(posVersion)
+  
 return (
 
 <div className="container">
@@ -496,10 +496,11 @@ return (
         <div className="analyze-table">
         
           <h1>Dashboard</h1>
+          
           <div className="date">
               <h2>Selected Date</h2>
               <input type="date" min={minDate} max={maxDate} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-              to
+              {' '} to {' '} 
               <input type="date" min={minDate} max={maxDate} value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} />
           </div>
           <button className="ripple" onClick={handleSearch}>Search</button>
@@ -567,10 +568,9 @@ return (
             Object.keys(getDashboard_data()).map((dateRangeKey, index) => {
               const [startDate, endDate] = dateRangeKey.split(' - ');
               let oneday=0;
-              if (startDate == endDate){
+              if (startDate === endDate){
                 oneday =1;
               }
-           
 
               
               if (startDate === selectedDate && endDate === tselectedDate && getDashboard_data()[dateRangeKey].length !== 0) {
@@ -611,19 +611,17 @@ return (
                                     arrow = <span className="material-icons-sharp" style={{ fontSize: '13px',verticalAlign: 'middle' }}>arrow_downward</span>;
                                   } else {
                                     color = 'black';
-                                    arrow = '→';
+                                    arrow = '   ';
                                   } 
 
                                   return (
                                     <span style={{ color, fontSize: 'small' , fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                                    {arrow}{percentChange}%
+                                    {arrow}{isNaN(percentChange) || !isFinite(percentChange) ? 'N/A%' : `${percentChange}%`}
                                     </span>
                                   );
                                 })()}
                               </span>
                             )}
-
-                                          
                         </td>
                       </tr>
                     ))}
