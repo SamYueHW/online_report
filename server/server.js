@@ -2,6 +2,11 @@ const cluster = require('cluster');
 const { da } = require('date-fns/locale');
 const os = require('os');
 
+const cron = require('node-cron');
+
+// // 全局变量，用于追踪/dashboard路由的访问次数
+// let trackDashboardAccess = 0;
+
 if (cluster.isMaster) {
   // 主进程逻辑
   const numCPUs = os.cpus().length;
@@ -32,7 +37,6 @@ const jwt = require('jsonwebtoken');
 
 const jwtVerify = util.promisify(jwt.verify);
 
-// const socketIO = require('socket.io');
 
 const bcrypt = require("bcrypt") // Importing bcrypt package
 const crypto = require('crypto');
@@ -50,6 +54,8 @@ const { darkScrollbar } = require('@mui/material');
 const cors = require('cors');
 const { Console, group } = require('console');
 const moment = require('moment');
+const momentlocal = require('moment-timezone');
+
 
 
 const path = require('path');
@@ -264,12 +270,15 @@ app.post('/checkStores', (req, res) => {
           const columnsToSum = ['TotalNetSales', 
           'TotalTransaction', 
           'TotalEftpos', 
-          'NegativeSalesAmount'];  
+          'NegativeSalesAmount','GSTItemSales','GSTFreeItemSales','GSTCollected'];  
 
           const columnsToSum_h = ['NetSales',
           'TotalTransaction',
           'TotalEftposPayment', 
-          'VoidAmount'
+          'VoidAmount',
+          'TotalGST',
+          'TotalSalesExTax',
+
           ];
           const sumColumns = columnsToSum.map(column => `SUM(${column}) AS ${column}`).join(', ');
           const sumColumns_h = columnsToSum_h.map(column => `SUM(${column}) AS ${column}`).join(', ');
@@ -317,6 +326,7 @@ app.post('/checkStores', (req, res) => {
             storeNames: storeNamesResults,
             results: branchPaymentResults
           };
+
           
         }
         // console.log(branchPaymentWithDate);
@@ -382,7 +392,6 @@ app.get('/dashboard',(req, res) => {
   if (!origin_token) {
     return res.status(401).json({ success: false, message: 'Authorization header missing' });
   }
-
       const token = origin_token.split(' ')[1]; // 获取 JWT Token
       // 验证并解码 JWT
       jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
@@ -1718,48 +1727,25 @@ async function find_client_socket(store_id) {
 }
 
 
-function listenserver(server) {
-  const webpage = new Map();
 
-  io.on('connection', function (socket) {
-    // Store webpage socket ID and connection details
-    socket.on('message', function (data) {
-      console.log(data);
-    });
-    winston.info('SocketIO > Connected socket ' + socket.id);
+  // cron.schedule('17 2 * * *', async () => {
+  //   console.log('Running daily tasks...');
 
-    socket.on('login', function (data) {
-      // data = store_id
-      update_socket_sql(data, socket.id);
-    });
+  //  const totalStoresQuery = 'SELECT COUNT(*) as totalStores FROM stores';
+  //   const totalStoresResults = await executeDb(totalStoresQuery, [], { fetchAll: true });
+    
+  //   const ausDate = momentlocal().tz('Australia/Sydney').format('YYYY-MM-DD');
+  //   // 将数据保存到app_matics数据库
+  //   const insertQuery = 'INSERT INTO app_metrics (Date, ReportAccess, TotalStore) VALUES (?, ?, ?)';
+  //    executeDb(insertQuery, [ausDate, trackDashboardAccess, totalStoresResults.totalStores], { commit: true });
 
-    socket.on('sendData', function (data) {
-      const callback = userCallbacks[data.requestId];
-      
-      if (callback) {
-        // 触发关联的回调函数，并传递数据
-        callback(data.data);
-      } else {
-        console.log('No callback function for requestId:', requestId);
-      }
-    });
-    socket.on('disconnect', function () {
-      const connection = mysql.createConnection(connectionConfig);
-      connection.connect((error) => {
-        if (error) {
-          console.error('Error connecting to the database:', error);
-        }
-      });
-      const updateQuery = `UPDATE stores SET connection = 0 WHERE client_socket_id = ?`;
-      connection.query(updateQuery, [socket.id], (error, results) => {
-        if (error) {
-          console.error('Error executing UPDATE query:', error);
-        } 
-      });
-      connection.end();
-    });
-  });
-}
+  //   //重置trackDashboardAccess变量
+  //   trackDashboardAccess = 0;
+  // });
+
+
+
+
 
 // 创建 HTTPS 服务
 // const httpsServer = https.createServer( app);

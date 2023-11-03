@@ -10,4 +10,11 @@
     color: rgba(236, 157, 39, 0.818);
     font-size: 18px;
   }
+@media screen and (max-width:935px) {
+  .date_compare{
+    width: 143px;
+    height: 30px;
+    margin-left: -10px
+  }
   
+}

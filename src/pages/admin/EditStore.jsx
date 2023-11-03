@@ -290,8 +290,8 @@ const handleLogout = async () => {
         </select>
 
         <p>Selected User: {getSelectedUser() ? getSelectedUser().email : 'None'}</p>
-            <button onClick={handleModalSubmit}>Submit</button>
-            <button onClick={handleModalClose}>Close</button>
+            <button className = "commonbtn" onClick={handleModalSubmit}>Submit</button>
+            <button className = "commonbtn" onClick={handleModalClose}>Close</button>
           </div>
         </div>
       )}

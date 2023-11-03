@@ -2,15 +2,20 @@ import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 
 const PeakLineChart = ({ data }) => {
+ 
   const chartRef = useRef(null);
     
   useEffect(() => {
     
-    
-    const chartInstance = echarts.getInstanceByDom(chartRef.current) || echarts.init(chartRef.current);
 
-    const series1Data = data[0].map(item => [item.hour, item.amount]);
-    const series2Data = data[1]?.map(item => [item.hour, item.amount]);  // 使用 ?. 以防止 data[1] 不存在
+    const chartInstance = echarts.getInstanceByDom(chartRef.current) || echarts.init(chartRef.current);
+    const convertTo12HourFormat = hour => {
+      const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+      const period = hour < 12 ? ' AM' : ' PM';
+      return `${hour12}${period}`;
+    };
+    const series1Data = data[0].map(item => [convertTo12HourFormat(item.hour), item.amount]);
+    const series2Data = data[1]?.map(item => [convertTo12HourFormat(item.hour), item.amount]);  // 使用 ?. 以防止 data[1] 不存在
     let Data1Date = "Today";
 
     let Data2Date = "Yesterday";
@@ -38,6 +43,21 @@ const PeakLineChart = ({ data }) => {
       });
       legendData.push(Data2Date);
     }
+
+    function convertTo24Hour(timeStr) {
+      const [time, period] = timeStr.split(' ');
+      let hour = parseInt(time, 10);
+  
+      if (period.toUpperCase() === 'PM' && hour !== 12) {
+          hour += 12;
+      }
+      if (period.toUpperCase() === 'AM' && hour === 12) {
+          hour = 0;
+      }
+  
+      return hour;
+  }
+  
     const option = {
       tooltip: {
         trigger: 'axis',
@@ -46,13 +66,14 @@ const PeakLineChart = ({ data }) => {
             const hour = firstSeries ? firstSeries.value[0] : 'Unknown';
             
             // 在顶部添加总的 "Hour" 信息并加粗
-            let tooltipText = `<strong>${hour}H</strong><br/>`;
+            let tooltipText = `<strong>${hour}</strong><br/>`;
             
             params.forEach(param => {
               const seriesName = param.seriesName;  // 获取该系列的名称
               const value = param.value;  // 获取该数据点的值
-              const dataItem = data[param.seriesIndex].find(item => item.hour === param.value[0]);
-          
+              const hour24 = convertTo24Hour(param.value[0]);  // 例如，这里会将 "2 PM" 转换为 14
+const dataItem = data[param.seriesIndex].find(item => item.hour === hour24);
+
               // 使用 marker 语法添加与图例相同的颜色点
               const colorPoint = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${param.color}"></span>`;
               
@@ -72,9 +93,9 @@ const PeakLineChart = ({ data }) => {
       xAxis: {
         type: 'category',
         boundaryGap: true,  // 对于柱状图，通常将这个值设置为 true
-        data: data[0].map(item => item.hour),
+        data: data[0].map(item => convertTo12HourFormat(item.hour)),
         axisLabel: {
-            formatter: '{value}H'  // 在每个标签后面添加 'H'
+            formatter: '{value}'  // 在每个标签后面添加 'H'
           }
       },
       yAxis: {

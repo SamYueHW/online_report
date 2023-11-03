@@ -15,6 +15,11 @@ const CheckStores = () => {
 
 
   const [stores, setStores] = useState(null);
+  const [totalNetSales, setTotalNetSales] = useState(0);
+  const [TotalSalesExTax, setTotalSalesExTax] = useState(0);
+  const [GSTItemSales, setGSTItemSales] = useState(0);
+  const [totalGSTCollected, setTotalGSTCollected] = useState(0);
+  const [totalGSTFreeItemSales, setTotalGSTFreeItemSales] = useState(0);
   const navigate = useNavigate();
   const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
   const [selectedDate, setSelectedDate] = useState(australiaDate);
@@ -36,7 +41,10 @@ const CheckStores = () => {
       console.log(error);
     }
   };
-
+  function formatCurrency(value) {
+    // 使用正则表达式确保数值每三位有一个逗号作为千分位分隔符
+    return value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+  }
 
   const handleStoreSelect = async (storeId) => {
     try {
@@ -117,6 +125,7 @@ const CheckStores = () => {
           if (response.data.storeData) {
             
             setStores(response.data.storeData); // 如果有多个商店，设置商店名称
+
             setBranchPaymentData(response.data.branchPaymentResults);
 
             setStoreNames(response.data.branchPaymentResults.storeNames);
@@ -139,13 +148,64 @@ const CheckStores = () => {
   let pieChartData = [];
 
   if (getBranchPaymentData() && getBranchPaymentData().results.length > 0) {
-    pieChartData = getBranchPaymentData().results.map((payment) => ({
+    pieChartData = getMergedPaymentData().map((payment) => ({
       name: payment.Description,
       value: parseFloat(payment.TotalAmount.toFixed(2)),
     }));
   }
   
-
+  function getMergedPaymentData() {
+    const originalData = getBranchPaymentData().results;
+    return originalData.reduce((acc, payment) => {
+      const existingIndex = acc.findIndex(
+        (p) => p.Description === payment.Description
+      );
+      
+      if (existingIndex !== -1) {
+        acc[existingIndex].TotalAmount += payment.TotalAmount;
+      } else if (payment.Description === 'VISA' || payment.Description === 'VISA CARD') {
+        const visaIndex = acc.findIndex(
+          (p) => p.Description === 'VISA' || p.Description === 'VISA CARD'
+        );
+        if (visaIndex !== -1) {
+          acc[visaIndex].TotalAmount += payment.TotalAmount;
+        } else {
+          acc.push({ ...payment });
+        }
+      } else if (payment.Description === 'DEBIT CARD' || payment.Description === 'DEBIT') {
+        const debitIndex = acc.findIndex(
+          (p) => p.Description === 'DEBIT CARD' || p.Description === 'DEBIT'
+        );
+        if (debitIndex !== -1) {
+          acc[debitIndex].TotalAmount += payment.TotalAmount;
+        } else {
+          acc.push({ ...payment });
+        }
+      }
+      else if (payment.Description === 'AMERICAN EXPRESS' || payment.Description === 'AMEX') {
+        const amexIndex = acc.findIndex(
+          (p) => p.Description === 'AMERICAN EXPRESS' || p.Description === 'AMEX'
+        );
+        if (amexIndex !== -1) {
+          acc[amexIndex].TotalAmount += payment.TotalAmount;
+        } else {
+          acc.push({ ...payment });
+        }
+      } 
+      
+      
+      else {
+        acc.push({ ...payment });
+      }
+      return acc;
+    }, []).sort((a, b) => {
+      if (a.Description === 'CASH') return -1;
+      if (b.Description === 'CASH') return 1;
+      return 0;
+    });
+  }
+  
+  
   useEffect(() => {
     const fetchStores = async () => {
         try {
@@ -174,6 +234,7 @@ const CheckStores = () => {
                 if (response.data.storeData) {
                     
                     setStores(response.data.storeData); // 如果有多个商店，设置商店名称
+                    console.log(response.data.storeData)
                     setBranchPaymentData(response.data.branchPaymentResults);
                     
                     
@@ -196,10 +257,64 @@ const CheckStores = () => {
 
     fetchStores();
   }, []);
+
+  useEffect(() => {
+    let sum = 0;
+    let sumGST = 0;
+    let sumGSTFreeItemSales = 0;
+    let sumGSTItemSales = 0;
+    let sumTotalSalesExTax = 0;
+    if (stores) {
+      Object.keys(stores).forEach((storeName) => {
+        const store = stores[storeName];
+        // 假设 TotalNetSales 或 TotalSales 存在于每个分店数据中
+        if (store.TotalNetSales) {
+          sum += store.TotalNetSales;
+        } else if (store.NetSales) {
+          sum += store.NetSales;
+        }
+
+        if (store.GSTItemSales) {
+          sumGSTItemSales += store.GSTItemSales;
+        } 
+
+         // 计算 TotalGSTCollected
+         if (store.GSTCollected) {
+          sumGST += store.GSTCollected;
+        } else if (store.TotalGST) {
+          sumGST += store.TotalGST;
+        }
+
+        if (store.TotalSalesExTax) {
+          sumTotalSalesExTax += store.TotalSalesExTax;
+        }
+        if (store.GSTFreeItemSales) {
+          sumGSTFreeItemSales += store.GSTFreeItemSales;
+        }
+      
+
+      });
+      setTotalNetSales(sum);
+      setTotalGSTCollected(sumGST);
+
+      setTotalSalesExTax(sumTotalSalesExTax);
+
+      setGSTItemSales(sumGSTItemSales);
+      setTotalGSTFreeItemSales(sumGSTFreeItemSales);
+
+    }
+  }, [stores]);
+
+
   const formatKey = (key) => {
     if (key === 'NegativeSalesAmount') {
       return 'Void Sales Amount';
     }
+    if (key.includes('GST')) {
+      return key.replace('GST', ' GST').replace(/([A-Z][a-z])/g, ' $1').trim();
+    }
+  
+
     return key.replace(/([A-Z])/g, ' $1').trim();
   };
 
@@ -272,10 +387,79 @@ const CheckStores = () => {
     </div>
     <div className='right-column'>
     <div className='right'>
+
+      <div className='payment-summary'>
+      <h2>All Branches Summary</h2>
+        <div className='non-cash-section'>
+          <div className="icon">
+            <span className='material-icons-sharp'>sell</span>  {/* 可以选择你喜欢的图标 */}
+          </div>
+          <div className="non-cash-container">
+          <div className="non-cash-row">
+            <div className="non-cash-description">
+              <h3>Total Net Sales</h3>
+            </div>
+            <div className="non-cash-amount">
+              ${formatCurrency(totalNetSales)}
+            </div>
+
+            </div>
+
+            <div className="non-cash-row">
+              <div className="non-cash-description">
+                <h3>Total GST Collected</h3>
+              </div>
+              <div className="non-cash-amount">
+                ${formatCurrency(totalGSTCollected)}
+              </div>
+            </div>
+
+            {TotalSalesExTax !== 0 && (
+              <>
+              <div className="non-cash-row">
+                <div className="non-cash-description">
+                  <h3>Total Sales Ex Tax</h3>
+                </div>
+                <div className="non-cash-amount">
+                  ${formatCurrency(TotalSalesExTax)}
+                </div>
+              </div>
+              </>
+            )}
+            {totalGSTFreeItemSales !== 0 && (
+              <>
+              <div className="non-cash-row">
+                <div className="non-cash-description">
+                  <h3>Total GST Free Item Sales</h3>
+                </div>
+                <div className="non-cash-amount">
+                  ${formatCurrency(totalGSTFreeItemSales)}
+                </div>
+              </div>
+              </>
+            )}
+            {GSTItemSales !== 0 && (
+              <>
+              <div className="non-cash-row">
+                <div className="non-cash-description">
+                  <h3>Total GST Item Sales</h3>
+                </div>
+                <div className="non-cash-amount">
+                  ${formatCurrency(GSTItemSales)}
+                </div>
+              </div>
+              </>
+            )}
+
+          </div>
+        </div>
+      </div>
+
+
       {getBranchPaymentData() && Object.keys(getBranchPaymentData()).length > 0 && (
            <div className='payment-summary'>
-          
-            <h2>Branches Sales Summary</h2>
+            
+            <h2>Branches Payment Summary</h2>
             {getBranchPaymentData().results.length > 0 ? (
               <>
                 <div className="store-names">
@@ -288,13 +472,13 @@ const CheckStores = () => {
                     <span className='material-icons-sharp'>store</span>
                   </div>
                   <div className="non-cash-container">
-                    {getBranchPaymentData().results.map((payment, index) => (
+                    {getMergedPaymentData().map((payment, index) => (
                       <div key={index} className="non-cash-row">
                         <div className="non-cash-description">
                           <h3 style={{marginRight:'10px'}}>{payment.Description}</h3>
                         </div>
                         <div className="non-cash-amount">
-                          ${payment.TotalAmount.toFixed(2)}
+                          ${formatCurrency(payment.TotalAmount)}
                         </div>
                       </div>
                     ))}

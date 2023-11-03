@@ -100,9 +100,11 @@ const lastMonday = australiaMoment.clone().subtract(1, 'weeks').startOf('isoWeek
 const lastSunday = australiaMoment.clone().subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
 
 
+
 const [selectedDate, setSelectedDate] = useState(australiaDate);
 const [tselectedDate, setTSelectedDate] = useState(australiaDate);
 // const [comparedDate, setComparedDate] = useState(lastMonday);
+
 // const [tcomparedDate, setTComparedDate] = useState(lastSunday);
 const [comparedDate, setComparedDate] = useState(null);
 const [tcomparedDate, setTComparedDate] = useState(null);
@@ -430,8 +432,7 @@ const processDashboardData = (dashboardData) => {
     });
     setSelectedTotalNetSales(selectedTotalNetSales);
     setComparedTotalNetSales(comparedTotalNetSales);
-    console.log({xAxisData1: x1Data, yAxisData1: y1Data, xAxisData2: x2Data, yAxisData2: y2Data});
-
+    
     setNetSalesByDate({xAxisData1: x1Data, yAxisData1: y1Data, xAxisData2: x2Data, yAxisData2: y2Data,});
 
   }}
@@ -565,6 +566,10 @@ const processDashboardData = (dashboardData) => {
       setSelectedDate(startOfYear);
       setTSelectedDate(endOfYear);
     }
+    else if (dateType === "Custom") {
+      setSelectedDate(selectedDate);
+     
+    }
   };
   
   function formatDateTime(isoString) {
@@ -585,6 +590,7 @@ const processDashboardData = (dashboardData) => {
 
 
   const handleComparedDateChange = (selectedDate) => {
+
     let comparedStartDate = "";
     let comparedEndDate = "";
   
@@ -649,6 +655,10 @@ const processDashboardData = (dashboardData) => {
     else if (dateType === "Monthly") {
       handleSelectedDateChange(australiaDate);
       
+      handleComparedDateChange(null);
+    }
+    else if (dateType === "Custom") {
+      handleSelectedDateChange(australiaDate);
       handleComparedDateChange(null);
     }
     
@@ -744,8 +754,13 @@ const processDashboardData = (dashboardData) => {
     if (dateType === 'Daily') {
       daysOrHours = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     } else if (dateType === 'Hourly') {
-      daysOrHours = Array.from({ length: 24 }, (_, i) => `${i}H`);
-    } else if (dateType === 'Weekly') {
+      daysOrHours = Array.from({ length: 24 }, (_, i) => {
+        const hour = i % 12 === 0 ? 12 : i % 12;
+        const period = i < 12 ? ' AM' : ' PM';
+        return `${hour}${period}`;
+      });
+    }
+     else if (dateType === 'Weekly') {
       daysOrHours = Array.from({ length: 4 }, (_, i) => `Week ${i + 1}`);
     }else if (dateType === 'Monthly') {
       daysOrHours = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -756,8 +771,8 @@ const processDashboardData = (dashboardData) => {
       return index !== -1 ? str.substring(0, index).trim() : str;
     }
     
-
   return (
+    
     <div className="container">
       <div className='sider'>
       <Sidebar key={hasBranch ? 'true' : 'false'} user={getUser()} onLogout={handleLogout} showSidebar={showSidebar} setShowSidebar={setShowSidebar}  hasBranch={hasBranch}  isChangePasswordModalOpen={isChangePasswordModalOpen} posVersion={posVersion}
@@ -830,7 +845,7 @@ const processDashboardData = (dashboardData) => {
             <input type="date" value={selectedDate} onChange={(e) => handleSelectedDateChange(e.target.value)} />
             {dateType!=="Hourly"&& (
               <>
-                to
+                 {' '} to {' '}
                 <input type="date" value={tselectedDate} onChange={(e) => handleSelectedDateChange(e.target.value)} />
               </>
             )}
@@ -838,10 +853,10 @@ const processDashboardData = (dashboardData) => {
           {dateType !== "Monthly" && (
             <div className="date">
               <h2>Compared Date</h2>
-              <input type="date" value={comparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
+              <input type="date" className='date_compare' value={comparedDate } onChange={(e) => handleComparedDateChange(e.target.value)} />
               {dateType !== "Hourly" && (
                 <>
-                  to
+                   {' '} to {' '}
                   <input type="date" value={tcomparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
                 </>
               )}

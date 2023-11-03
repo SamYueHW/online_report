@@ -8,7 +8,7 @@ import useGetState from '../../hooks/useGetState';
 import { CircularProgress } from '@mui/material';
 import './admindashboard.scss';
 import DatePicker from 'react-datepicker';
-import SalesPieChart from "../../components/chart/SalesPieChart";
+
 
 const Admindashboard = ({ }) => {
     const navigate = useNavigate();
@@ -705,8 +705,9 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
             } else if (status === "expired") {
               statusClassName = "expired-status";
             }
-  
+            
             return (
+              
               <div key={item.StoreId} className={`store ${statusClassName}`}>
                 <div className="store-container">
                 <div className="left-section">
@@ -717,10 +718,14 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                       <p>Store Name: {item.StoreName}</p>
                     </div>
                     <div className="store-id">
-                      <p>Shop ID: {item.StoreId}</p>
+                    <p style={{
+                        userSelect: item.LastestReportUpdateTime === null ? "text" : "none"
+                    }}>Shop ID: {item.StoreId}</p>
                     </div>
                     <div className="appid">
-                      <p>App ID: {item.AppId}</p>
+                    <p style={{
+                        userSelect: item.LastestReportUpdateTime === null ? "text" : "none"
+                    }}>App ID: {item.AppId}</p>
                     </div>
                     <div className="pos">
                     <p>
