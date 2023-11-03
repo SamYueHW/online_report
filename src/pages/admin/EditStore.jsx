@@ -247,7 +247,7 @@ const handleLogout = async () => {
 
           </div>
           {/* 添加其他输入字段 */}
-          <button type="submit" className="submit-button">Submit</button>
+          <button className = "commonbtn" type="submit">Submit</button>
         </form>
       )}
       <div className="related-users">
@@ -290,8 +290,8 @@ const handleLogout = async () => {
         </select>
 
         <p>Selected User: {getSelectedUser() ? getSelectedUser().email : 'None'}</p>
-            <button onClick={handleModalSubmit}>Submit</button>
-            <button onClick={handleModalClose}>Close</button>
+            <button className = "commonbtn" onClick={handleModalSubmit}>Submit</button>
+            <button className = "commonbtn" onClick={handleModalClose}>Close</button>
           </div>
         </div>
       )}
