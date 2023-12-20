@@ -1,41 +1,27 @@
-import * as React from 'react';
-
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
+// DatePickerComponent.jsx
+import React from 'react';
+import { DatePicker } from 'antd';
+import dayjs from 'dayjs';
 import './datepicker.scss';
-import moment from "moment";
 
-moment.updateLocale("en", {
-    week: {
-      dow: 1
-    }
-});
+// 这里定义了一个简单的 DatePicker 组件
+// 它接受两个 props: value 和 onChange
 
-export default function FirstComponent({ defaultDate, onDateChange }) {
-    // 定义一个函数来检查日期是否为星期一
-    const disableAllDaysExceptMonday = (date) => {
-      return date.day() !== 1;
-    };
-    const handleDateSelection = (date) => {
-      // 其他逻辑...
-      onDateChange(date); // 调用从父组件传入的回调函数
-    };
+const dateFormat = 'YYYY/MM/DD';
+const weekFormat = 'MM/DD';
+const monthFormat = 'YYYY/MM';
 
-    return (
-      <div className="datepicker-component">
-        <LocalizationProvider dateAdapter={AdapterMoment} locale="en-au">
-          <DatePicker
-            // 传递 disableAllDaysExceptMonday 函数给 shouldDisableDate 属性
-            shouldDisableDate={disableAllDaysExceptMonday}
-            // 设置日期格式为 "DD/MM/YYYY"
-            format="DD/MM/YYYY"
-            value={defaultDate}
-            onChange={handleDateSelection}
-            // 传递 renderDay 函数给 renderDay 属性
-            // renderDay={renderDay}
-          />
-        </LocalizationProvider>
-      </div>
-    );
-}
+/** Manually entering any of the following formats will perform date parsing */
+const dateFormatList = ['DD/MM/YYYY', 'DD/MM/YY', 'DD-MM-YYYY', 'DD-MM-YY'];
+const DatePickerComponent = ({ value, onChange }) => {
+  const isValidDate = dayjs(value, dateFormatList[0], true).isValid();
+  return (
+    <DatePicker
+    defaultValue={isValidDate ? dayjs(value, dateFormatList[0]) : null}
+      onChange={onChange}
+      format="DD/MM/YYYY"
+    />
+  );
+};
+
+export default DatePickerComponent;

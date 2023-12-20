@@ -4,8 +4,13 @@ import useGetState from '../../hooks/useGetState';
 import moment from 'moment-timezone';
 import axios from 'axios';
 import Chart from '../../components/chart/Chart';
+import DateRangePickerComponent from '../../components/datepicker/DateRangepicker';
 import { useNavigate } from 'react-router-dom';
 import './dashboardnew.scss';
+
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 
 const CheckStores = () => {
@@ -21,7 +26,16 @@ const CheckStores = () => {
   const [totalGSTCollected, setTotalGSTCollected] = useState(0);
   const [totalGSTFreeItemSales, setTotalGSTFreeItemSales] = useState(0);
   const navigate = useNavigate();
-  const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
+
+
+// 使用插件
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// 设置时区并获取日期
+const australiaDate = dayjs.tz(dayjs(), 'Australia/Sydney').format('DD/MM/YYYY');
+
+  // const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
   const [selectedDate, setSelectedDate] = useState(australiaDate);
   const [tselectedDate, setTSelectedDate] = useState(australiaDate);
 
@@ -43,7 +57,9 @@ const CheckStores = () => {
   };
   function formatCurrency(value) {
     // 使用正则表达式确保数值每三位有一个逗号作为千分位分隔符
-    return value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    if (!isNaN(value)) {
+      return value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    }
   }
 
   const handleStoreSelect = async (storeId) => {
@@ -107,10 +123,13 @@ const CheckStores = () => {
         }
       };
       
+      const fselected = dayjs(selectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+      const tselected = dayjs(tselectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+
       const params = {
-        fselected: selectedDate,
-        tselected: tselectedDate, // 你可以根据需要修改这个值
-      }
+        fselected: fselected,
+        tselected: tselected,
+      };
 
       const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/checkStores', params, config); // 发送请求到服务器
     
@@ -216,12 +235,14 @@ const CheckStores = () => {
                 'authorization': `Bearer ${token}`
               }
             };
-            const params = {
-              fselected: selectedDate,
-              tselected: tselectedDate, // 你可以根据需要修改这个值
-              
-            }
-            
+           
+            const fselected = dayjs(selectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+      const tselected = dayjs(tselectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+
+      const params = {
+        fselected: fselected,
+        tselected: tselected,
+      };
             const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/checkStores', params, config); // 发送请求到服务器
           
             if (response.status === 200 && response.data.success) {
@@ -325,6 +346,17 @@ const CheckStores = () => {
     }
   }, [selectedDate, tselectedDate]);
 
+  const handleDateChange = (dates, dateStrings) => {
+    // dateStrings 是日期范围的字符串数组，形如 ["YYYY-MM-DD", "YYYY-MM-DD"]
+    // 更新您的状态或执行其他逻辑
+    if (dateStrings[0] === '' || dateStrings[1] === '') {
+      setSelectedDate(australiaDate);
+      setTSelectedDate(australiaDate);
+    }else{
+    setSelectedDate(dateStrings[0]);
+    setTSelectedDate(dateStrings[1]);}
+  };
+
   return (
     <div className="container">
       {/* <Sidebar user={getUser()} onLogout={handleLogout} isOpen={isSidebarOpen} /> */}
@@ -335,10 +367,15 @@ const CheckStores = () => {
 
       <h1 className='zdy-t1'>Check Stores</h1>
       <div className="date">
-        <h2>Selected Date</h2>
-        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+        
+
+      <DateRangePickerComponent
+        value={[selectedDate, tselectedDate]}
+        onChange={handleDateChange}
+        />
+        {/* <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
         to
-        <input type="date" value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} />
+        <input type="date" value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} /> */}
       </div>
       <button className="ripple" onClick={handleSearch}>Search</button>
 
@@ -361,7 +398,7 @@ const CheckStores = () => {
                                 ? (stores[storeName][key] === 0 ? '0' : stores[storeName][key]) 
                                 : '0') 
                             : (stores[storeName][key] !== null 
-                                ? (stores[storeName][key] === 0 ? '$0' : '$' + parseFloat(stores[storeName][key]).toFixed(2)) 
+                                ? (stores[storeName][key] === 0 ? '$0' : '$' + formatCurrency(parseFloat(stores[storeName][key]))) 
                                 : '$0')
                           }
                         </h5>
@@ -462,11 +499,11 @@ const CheckStores = () => {
             <h2>Branches Payment Summary</h2>
             {getBranchPaymentData().results.length > 0 ? (
               <>
-                <div className="store-names">
+                {/* <div className="store-names">
                   <h4>
                     {`Includes: [${Array.isArray(storeNames) ? storeNames.map(store => store.StoreName).join(', ') : ''}]`}
                   </h4>
-                </div>
+                </div> */}
                 <div className='non-cash-section'>
                   <div className="icon">
                     <span className='material-icons-sharp'>store</span>

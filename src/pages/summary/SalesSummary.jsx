@@ -8,13 +8,31 @@ import moment from 'moment-timezone';
 import { CircularProgress } from '@mui/material';
 
 import Dropdown from '../../components/dropdown/Dropdown';
+import DateRangePickerComponent from '../../components/datepicker/DateRangepicker';
+import DatePickerComponent from '../../components/datepicker/Datepicker';
+import WeekDatePickerComponent from '../../components/datepicker/WeekDatepicker';
 import Mchart from '../../components/mchart/Mchart';
 import PeakLineChart from '../../components/linechart/PeakLineChart';
 import "./SalesSummary.scss";
 
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import isoWeek from 'dayjs/plugin/isoWeek'; 
+
+
+
+import { set } from 'date-fns';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isoWeek); // 使用 isoWeek 插件
 
 
 const SalesSummary = () => {
+
+ 
+
   const [user, setUser, getUser] = useGetState(null);
   const [isUserFetched, setIsUserFetched, getIsUserFetched] = useGetState(false);
   const [isAdmin, setIsAdmin, getIsAdmin] = useGetState(false);
@@ -39,8 +57,8 @@ const SalesSummary = () => {
   const [hourlyRangeData, setHourlyRangeData] = useState(null);
   
     // 设置澳大利亚悉尼时区的当前日期
-  const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
-  const dateOptions = ["Hourly","Daily", "Weekly", "Monthly"];
+  const australiaDate = dayjs.tz(dayjs(), 'Australia/Sydney').format('DD/MM/YYYY');
+  const dateOptions = ["Hourly","Daily", "Weekly", "Monthly","Custom"];
 
   const [dateType, setDateType] = useState("Hourly");
   
@@ -89,15 +107,16 @@ const SalesSummary = () => {
     }
   };
 
-const australiaMoment = moment.tz('Australia/Sydney'); // 获取澳大利亚悉尼时区的当前日期和时间
+// const australiaMoment = moment.tz('Australia/Sydney'); // 获取澳大利亚悉尼时区的当前日期和时间
 
-// 设置这一周的周一和周日
-const thisMonday = australiaMoment.clone().startOf('isoWeek').format('YYYY-MM-DD');
-const thisSunday = australiaMoment.clone().endOf('isoWeek').format('YYYY-MM-DD');
+// // 设置这一周的周一和周日
 
-// 设置上一周的周一和周日
-const lastMonday = australiaMoment.clone().subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
-const lastSunday = australiaMoment.clone().subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
+// const thisMonday = australiaMoment.clone().startOf('isoWeek').format('YYYY-MM-DD');
+// const thisSunday = australiaMoment.clone().endOf('isoWeek').format('YYYY-MM-DD');
+
+// // 设置上一周的周一和周日
+// const lastMonday = australiaMoment.clone().subtract(1, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+// const lastSunday = australiaMoment.clone().subtract(1, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
 
 
 
@@ -106,13 +125,13 @@ const [tselectedDate, setTSelectedDate] = useState(australiaDate);
 // const [comparedDate, setComparedDate] = useState(lastMonday);
 
 // const [tcomparedDate, setTComparedDate] = useState(lastSunday);
-const [comparedDate, setComparedDate] = useState(null);
-const [tcomparedDate, setTComparedDate] = useState(null);
+const [comparedDate, setComparedDate] = useState(australiaDate);
+const [tcomparedDate, setTComparedDate] = useState(australiaDate);
 
 
 
   // 判断 selectedDate 是否与当前日期相匹配
-  const isCurrentDate =selectedDate === australiaDate && tselectedDate === australiaDate;
+  const isCurrentDate = selectedDate === australiaDate && tselectedDate === australiaDate;
 
   const formatDate = (dateString) => {
     return moment(new Date(dateString)).format('YYYY-MM-DD');
@@ -121,11 +140,12 @@ const [tcomparedDate, setTComparedDate] = useState(null);
     return moment(new Date(dateString)).format('DD/MM/YYYY');
   };
 
+  
 
-  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 935);
+  const [showSidebar, setShowSidebar] = useState(window.innerWidth > 1570);
   useEffect(() => {
     const handleResize = () => {
-      setShowSidebar(window.innerWidth > 935);
+      setShowSidebar(window.innerWidth > 1570);
     };
     window.addEventListener('resize', handleResize);
     return () => {
@@ -185,7 +205,7 @@ const [tcomparedDate, setTComparedDate] = useState(null);
     }
     //if compare date equal to yesterday
 
-    if(comparedDate === moment(australiaDate).subtract(1, 'days').format('YYYY-MM-DD')){
+    if(comparedDate === dayjs(australiaDate).subtract(1, 'days').format('YYYY-MM-DD')){
         Data2Date = "Yesterday";
     }else{
         Data2Date = formatDate2(comparedDate);
@@ -199,6 +219,7 @@ const [tcomparedDate, setTComparedDate] = useState(null);
 const processDashboardData = (dashboardData) => {
   let selectedTotalNetSales = 0;
   let comparedTotalNetSales = 0;
+  console.log(dashboardData);
 
   let x1Data = [];
   let y1Data = [];
@@ -211,8 +232,12 @@ const processDashboardData = (dashboardData) => {
       Object.entries(dashboardData).forEach(([dateRange, data]) => {
         if (Array.isArray(data)) {
          
-      
+          
         const [startDate, endDate] = dateRange.split(' - ');
+        console.log(startDate);
+        console.log(endDate);
+        console.log(formatDate(selectedDate));
+        console.log(formatDate(tselectedDate));
         
         // 对比日期并获取相应数据
         if (startDate === formatDate(selectedDate) && endDate === formatDate(tselectedDate)) {
@@ -438,9 +463,44 @@ const processDashboardData = (dashboardData) => {
   }}
   catch (error) {
     console.log(error);
-    navigate('/');
+    //navigate('/');
   }
 }
+const handleSelectedDatePickerChange = (dates, dateStrings) => {
+  // dateStrings 是日期范围的字符串数组，形如 ["YYYY-MM-DD", "YYYY-MM-DD"]
+  // 更新您的状态或执行其他逻辑
+
+  if(dateType !== "Hourly"){
+
+    setSelectedDate(dateStrings[0]);
+    setTSelectedDate(dateStrings[1]);
+ 
+  }
+  else{
+
+    setSelectedDate(dateStrings);
+    setTSelectedDate(dateStrings);
+  }
+};
+const handleComparedDatePickerChange = (dates, dateStrings) => {
+  // dateStrings 是日期范围的字符串数组，形如 ["YYYY-MM-DD", "YYYY-MM-DD"]
+  // 更新您的状态或执行其他逻辑
+ 
+  if(dateType !== "Hourly"){
+    // if (dateStrings[0] === '' || dateStrings[1] === '') {
+    //   setSelectedDate(australiaDate);
+    //   setTSelectedDate(australiaDate);
+    // }else{
+
+    setComparedDate(dateStrings[0]);
+    setTComparedDate(dateStrings[1]);
+  // }
+  }
+  else{ 
+    setComparedDate(dateStrings);
+    setTComparedDate(dateStrings);
+  }
+};
 
   const handleSearch = async () => {
     // 验证输入
@@ -459,14 +519,25 @@ const processDashboardData = (dashboardData) => {
       return;
     }
 // 构造请求参数
+const fselected = dayjs(selectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+const tselected = dayjs(tselectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+
+
+
+const fcompared = comparedDate !== "Invalid Date" ? dayjs(comparedDate, 'DD/MM/YYYY').format('YYYY-MM-DD') : null;
+        const tcompared = tcomparedDate !== "Invalid Date" ? dayjs(tcomparedDate, 'DD/MM/YYYY').format('YYYY-MM-DD') : null;
+// console.log(fselected);
+// console.log(tselected);
+// console.log(fcompared);
+// console.log(tcompared);
     const params = {
-      fselected: selectedDate,
-      tselected: tselectedDate, // 你可以根据需要修改这个值
-      fcompared: comparedDate,
-      tcompared: tcomparedDate, // 你可以根据需要修改这个值
+      fselected: fselected,
+      tselected: tselected, // 你可以根据需要修改这个值
+      fcompared: fcompared,
+      tcompared: tcompared, // 你可以根据需要修改这个值
       dateType: dateType
     }
-
+    console.log(params);
     // 发送 GET 请求
     try {
       const token = sessionStorage.getItem('jwtToken'); // 从 sessionStorage 获取 JWT Token
@@ -506,7 +577,7 @@ const processDashboardData = (dashboardData) => {
         
       }
     } catch (error) {
-      navigate('/');
+      //navigate('/');
       console.log(error);
     }
   };
@@ -538,22 +609,28 @@ const processDashboardData = (dashboardData) => {
 
 
   const handleSelectedDateChange = (selectedDate) => {
-
+    const parsedDate = dayjs(selectedDate, 'DD/MM/YYYY');
      if (dateType === "Hourly") {
       setSelectedDate(selectedDate);
       setTSelectedDate(selectedDate);
     }
     else if (dateType === "Daily") {
-      const startOfWeek = moment(selectedDate).startOf('isoWeek').format('YYYY-MM-DD');
-      const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
+      
+      console.log(parsedDate);
+      const startOfWeek = parsedDate.startOf('isoWeek').format('DD/MM/YYYY');
+      const endOfWeek = parsedDate.endOf('isoWeek').format('DD/MM/YYYY');
+      console.log(startOfWeek);
+      console.log(endOfWeek);
+
       setSelectedDate(startOfWeek);
       setTSelectedDate(endOfWeek);
     } 
     else if (dateType === "Weekly") {
       
-      const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
+      const endOfWeek = parsedDate.endOf('isoWeek');
+      const fourWeeksAgo = parsedDate.subtract(3, 'weeks').startOf('isoWeek');
       
-      const fourWeeksAgo = moment(endOfWeek).subtract(3, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+      // const fourWeeksAgo = dayjs(endOfWeek).subtract(3, 'weeks').startOf('isoWeek');
     
       setSelectedDate(fourWeeksAgo);
       setTSelectedDate(endOfWeek);
@@ -561,63 +638,76 @@ const processDashboardData = (dashboardData) => {
     
 
     else if (dateType === "Monthly") {
-      const startOfYear = moment(selectedDate).startOf('year').format('YYYY-MM-DD');
-      const endOfYear = moment(selectedDate).endOf('year').format('YYYY-MM-DD');
+      const startOfYear = dayjs(selectedDate).startOf('year');
+      const endOfYear = dayjs(selectedDate).endOf('year');
       setSelectedDate(startOfYear);
       setTSelectedDate(endOfYear);
     }
     else if (dateType === "Custom") {
       setSelectedDate(selectedDate);
+      setTSelectedDate(selectedDate);
+
      
     }
   };
   
   function formatDateTime(isoString) {
     const date = new Date(isoString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // 月份从0开始
-    const year = date.getFullYear();
-    
-    let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-  
+
+    // 墨尔本时区的偏移（以小时为单位），根据需要调整为 UTC+10 或 UTC+11
+    const melbourneOffset = 11; // 或者在夏令时期间改为 11
+
+    // 将 UTC 时间转换为墨尔本时间
+    const utcDate = date.getTime() + date.getTimezoneOffset() * 60000; // 转换为 UTC
+    const melbourneDate = new Date(utcDate + melbourneOffset * 3600000); // 应用墨尔本的偏移
+
+    const day = String(melbourneDate.getDate()).padStart(2, '0');
+    const month = String(melbourneDate.getMonth() + 1).padStart(2, '0');
+    const year = melbourneDate.getFullYear();
+
+    let hours = melbourneDate.getHours();
+    const minutes = String(melbourneDate.getMinutes()).padStart(2, '0');
+
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
     hours = hours ? hours : 12; // 如果小时为0，则转换为12
-  
+
     return `${day}/${month}/${year} ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-  }
+}
 
 
   const handleComparedDateChange = (selectedDate) => {
 
     let comparedStartDate = "";
     let comparedEndDate = "";
+
   
 
     if (dateType === "Hourly") {
-      comparedStartDate = moment(selectedDate).subtract(0, 'days').format('YYYY-MM-DD');
+      comparedStartDate = dayjs(selectedDate).subtract(0, 'days');
+
       comparedEndDate = comparedStartDate;
     }
 
     else if (dateType === "Daily") {
-      comparedStartDate = moment(selectedDate).subtract(0, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
-      comparedEndDate = moment(selectedDate).subtract(0, 'weeks').endOf('isoWeek').format('YYYY-MM-DD');
+      comparedStartDate = dayjs(selectedDate).subtract(0, 'weeks').startOf('isoWeek');
+      comparedEndDate = dayjs(selectedDate).subtract(0, 'weeks').endOf('isoWeek');
+
     } 
     else if (dateType === "Weekly") {
       // 获取selectedDate所在周的周一作为一周的开始
        
-      const endOfWeek = moment(selectedDate).endOf('isoWeek').format('YYYY-MM-DD');
+      const endOfWeek = dayjs(selectedDate).endOf('isoWeek');
       
-      const fourWeeksAgo = moment(endOfWeek).subtract(3, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
+      const fourWeeksAgo = dayjs(endOfWeek).subtract(3, 'weeks').startOf('isoWeek');
     
       comparedStartDate = fourWeeksAgo;
       comparedEndDate = endOfWeek;
     }
     
     else if (dateType === "Monthly") {
-      comparedStartDate = moment(selectedDate).subtract(0, 'years').startOf('year').format('YYYY-MM-DD');
-      comparedEndDate = moment(selectedDate).subtract(0, 'years').endOf('year').format('YYYY-MM-DD');
+      comparedStartDate = dayjs(selectedDate).subtract(0, 'years').startOf('year');
+      comparedEndDate = dayjs(selectedDate).subtract(0, 'years').endOf('year');
     }
     setComparedDate(comparedStartDate);
     setTComparedDate(comparedEndDate);
@@ -640,6 +730,7 @@ const processDashboardData = (dashboardData) => {
     if (dateType === "Hourly") {
       handleSelectedDateChange(australiaDate);
       handleComparedDateChange(null);
+     
       
     }
     else if (dateType === "Daily") {
@@ -660,6 +751,8 @@ const processDashboardData = (dashboardData) => {
     else if (dateType === "Custom") {
       handleSelectedDateChange(australiaDate);
       handleComparedDateChange(null);
+     
+
     }
     
     
@@ -678,13 +771,16 @@ const processDashboardData = (dashboardData) => {
           }
         };
         
+        const fselected = dayjs(selectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+        const tselected = dayjs(tselectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+        const fcompared = comparedDate !== "Invalid Date" ? dayjs(comparedDate, 'DD/MM/YYYY').format('YYYY-MM-DD') : null;
+        const tcompared = tcomparedDate !== "Invalid Date" ? dayjs(tcomparedDate, 'DD/MM/YYYY').format('YYYY-MM-DD') : null;
         const params = {
-          fselected: selectedDate,
-          tselected: tselectedDate, // 你可以根据需要修改这个值
-          // fselected: moment.tz(australiaDate, 'Australia/Sydney').startOf('isoWeek').format('YYYY-MM-DD'),
-          // tselected: moment.tz(australiaDate, 'Australia/Sydney').endOf('isoWeek').format('YYYY-MM-DD'), // 你可以根据需要修改这个值
-          fcompared: comparedDate,
-          tcompared: tcomparedDate, // 你可以根据需要修改这个值
+          fselected: fselected,
+          tselected: tselected, // 你可以根据需要修改这个值
+          
+          fcompared: fcompared,
+          tcompared: tcompared, // 你可以根据需要修改这个值
           dateType: dateType
         };
         const response = await axios.get(process.env.REACT_APP_SERVER_URL + '/searchSalesSummary', {
@@ -725,7 +821,7 @@ const processDashboardData = (dashboardData) => {
           setDashboard_data(response.data.data);
         }
       } catch (error) {
-        navigate('/');
+        //navigate('/');
         console.log(error);
       }
     };
@@ -840,28 +936,43 @@ const processDashboardData = (dashboardData) => {
     </div>
   )}
           <Dropdown selected={dateType} setSelected={setDateType} options={dateOptions} />
-          <div className="date">
+          {dateType !== "Custom"&&<div className="date">
             <h2>Selected Date</h2>
-            <input type="date" value={selectedDate} onChange={(e) => handleSelectedDateChange(e.target.value)} />
-            {dateType!=="Hourly"&& (
-              <>
-                 {' '} to {' '}
-                <input type="date" value={tselectedDate} onChange={(e) => handleSelectedDateChange(e.target.value)} />
-              </>
+            
+            {dateType==="Hourly"&&(      <DatePickerComponent 
+            value={selectedDate}
+            onChange={handleSelectedDatePickerChange}
+            />)}
+            {dateType==="Daily"&&(
+              <WeekDatePickerComponent
+              value={selectedDate}
+              onChange={handleSelectedDatePickerChange}
+              
+            />)}
+            {dateType==="Custom"&&(
+                    <DateRangePickerComponent 
+                    value={[selectedDate, tselectedDate]}
+                    onChange={handleSelectedDatePickerChange}
+                    />
             )}
-          </div>
-          {dateType !== "Monthly" && (
+
+          </div>}
+          {dateType !== "Monthly"&& (
             <div className="date">
               <h2>Compared Date</h2>
-              <input type="date" className='date_compare' value={comparedDate } onChange={(e) => handleComparedDateChange(e.target.value)} />
-              {dateType !== "Hourly" && (
-                <>
-                   {' '} to {' '}
-                  <input type="date" value={tcomparedDate} onChange={(e) => handleComparedDateChange(e.target.value)} />
-                </>
-              )}
+             
+              {dateType !== "Hourly" ? (
+                <DateRangePickerComponent 
+                value={[comparedDate, tcomparedDate]}
+                onChange={handleComparedDatePickerChange}
+                />
+              ):(  <DatePickerComponent 
+                value={comparedDate}
+                onChange={handleComparedDatePickerChange}
+                />)}
             </div>
           )}
+          
 
 
           <button className="ripple" onClick={handleSearch}>Search</button>
@@ -875,22 +986,22 @@ const processDashboardData = (dashboardData) => {
           isCurrentDate ? 
           <>
             Today: <br />
-            {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+            {selectedDate}
           </> : 
           (selectedDate === tselectedDate ? 
           <>
             Selected Date: <br />
-            {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+            {selectedDate}
           </> : 
           <>
             Selected Date Range: <br />
-            {moment(selectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tselectedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+            {selectedDate} to {tselectedDate}
           </>)
         }
       </th>
       {
-         (comparedDate && moment(comparedDate).isValid() &&
-         tcomparedDate && moment(tcomparedDate).isValid() && 
+         (comparedDate && dayjs(comparedDate).isValid() &&
+         tcomparedDate && dayjs(tcomparedDate).isValid() && 
          (
            // 检查comparedTotalNetSalesDateRange是否存在并匹配日期范围
            (comparedTotalNetSalesDateRange && 
@@ -908,11 +1019,11 @@ const processDashboardData = (dashboardData) => {
               comparedDate === tcomparedDate ? 
               <>
                 Compared Date: <br />
-                {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                {comparedDate}
               </> : 
               <>
                 Compared Date Range: <br />
-                {moment(comparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')} to {moment(tcomparedDate, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                {comparedDate} to {tcomparedDate}
               </>
             }
           </th>

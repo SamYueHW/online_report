@@ -10,7 +10,10 @@ import { CircularProgress } from '@mui/material';
 import Leaderboard from '../../components/leaderboard/Leaderboard';
 import Chart from '../../components/chart/Chart';
 import SalesPieChart from '../../components/chart/SalesPieChart';  
-
+import DateRangePickerComponent from '../../components/datepicker/DateRangepicker';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 
 const Dashboardnew = () => {
@@ -49,7 +52,13 @@ const Dashboardnew = () => {
   const [defaultKeysToShow, setDefaultKeysToShow] = useState('');  // 默认显示的键的集合
 
     // 设置澳大利亚悉尼时区的当前日期
-  const australiaDate = moment.tz('Australia/Sydney').format('YYYY-MM-DD');
+
+// 使用插件
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// 设置时区并获取日期
+const australiaDate = dayjs.tz(dayjs(), 'Australia/Sydney').format('DD/MM/YYYY');
   const [minDate, setMinDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
 
@@ -238,19 +247,22 @@ useEffect(() => {
 
   const handleSearch = async () => {
     // 验证输入
-    if (selectedDate === "" || tselectedDate === "") {
-      alert("Please make sure [Selected Date] and [TSelected Date] have been filled in!");
-      return;
-    }
+    // if (selectedDate === "" || tselectedDate === "") {
+    //   alert("Please make sure [Selected Date] and [TSelected Date] have been filled in!");
+    //   return;
+    // }
     
-    if (new Date(selectedDate) > new Date(tselectedDate)) {
-      alert("Please enter a valid date range for Selected Dates.");
-      return;
-    }
+    // if (new Date(selectedDate) > new Date(tselectedDate)) {
+    //   alert("Please enter a valid date range for Selected Dates.");
+    //   return;
+    // }
     // 构造请求参数
+    const fselected = dayjs(selectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+    const tselected = dayjs(tselectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+
     const params = {
-      fselected: selectedDate,
-      tselected: tselectedDate
+      fselected: fselected,
+      tselected: tselected,
     };
   
     // 发送 GET 请求
@@ -271,7 +283,7 @@ useEffect(() => {
       });
       // 处理响应结果
       if (response.status === 200) {
-
+        console.log(response.data.results)
         setposVersion(response.data.PosVersion);
         setDashboard_data(response.data.results);
         setleaderboardData(response.data.itemSalesResults);
@@ -353,10 +365,13 @@ useEffect(() => {
 
       try {
          // 构造请求参数
-        const params = {
-          fselected: selectedDate,
-          tselected: tselectedDate
-        };
+         const fselected = dayjs(selectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+         const tselected = dayjs(tselectedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+   
+         const params = {
+           fselected: fselected,
+           tselected: tselected,
+         };
         const token = sessionStorage.getItem('jwtToken'); // 从 sessionStorage 获取 JWT Token
 
         const config = {
@@ -376,6 +391,7 @@ useEffect(() => {
           return;
         }
         if (!response.data.isAdmin && response.data.results) {
+          console.log(response.data.results)
 
           setposVersion(response.data.PosVersion);
           
@@ -448,6 +464,17 @@ useEffect(() => {
     }
   }, [getIsUserFetched(), getIsAdmin(), getDashboard_data()]);
 
+  const handleDateChange = (dates, dateStrings) => {
+    // dateStrings 是日期范围的字符串数组，形如 ["YYYY-MM-DD", "YYYY-MM-DD"]
+    // 更新您的状态或执行其他逻辑
+    if (dateStrings[0] === '' || dateStrings[1] === '') {
+      setSelectedDate(australiaDate);
+      setTSelectedDate(australiaDate);
+    }else{
+    setSelectedDate(dateStrings[0]);
+    setTSelectedDate(dateStrings[1]);}
+  };
+
   if (getIsLoading()) {
     return (
       <div className="loading-overlay">
@@ -497,12 +524,16 @@ return (
         
           <h1>Dashboard</h1>
           
-          <div className="date">
-              <h2>Selected Date</h2>
-              <input type="date" min={minDate} max={maxDate} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+          {/* <div className="date"> */}
+              {/* <h2>Selected Date</h2> */}
+              {/* <input type="date" min={minDate} max={maxDate} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
               {' '} to {' '} 
-              <input type="date" min={minDate} max={maxDate} value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} />
-          </div>
+              <input type="date" min={minDate} max={maxDate} value={tselectedDate} onChange={(e) => setTSelectedDate(e.target.value)} /> */}
+            <DateRangePickerComponent
+        value={[selectedDate, tselectedDate]}
+        onChange={handleDateChange}
+        />
+          {/* </div> */}
           <button className="ripple" onClick={handleSearch}>Search</button>
           <div className="daily-report">
             <h2>Daily Report</h2>

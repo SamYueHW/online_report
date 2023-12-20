@@ -1,3 +1,99 @@
+
+.store-setup {
+  display: flex;
+  flex-direction: column; /* 主轴方向为垂直 */
+}
+
+.content-wrapper {
+  display: flex;
+  flex-direction: row; /* 主轴方向为水平 */
+  justify-content: space-between; /* 子项之间有间隔 */
+  gap: 30px; /* 子项之间的间隔，根据需要调整 */
+  padding: 20px; /* 给最外层容器添加一些内边距 */
+}
+
+.online-report-section,
+.qr-order-section {
+  flex: 1; /* 两个部分平均分配空间 */
+  text-align: left; /* 文本靠左对齐 */
+  padding: 20px; /* 增加内边距 */
+  margin: 10px; /* 与其他元素的间隔 */
+  background-color: #fff; /* 设置背景颜色为白色 */
+  border: 1px solid #ddd; /* 添加边框 */
+  border-radius: 10px; /* 边框圆角 */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 添加阴影效果 */
+  overflow: hidden; /* 防止内容溢出 */
+  position: relative;
+  padding-bottom: 100px;
+}
+/* 如果 .online-report-section 不存在，.qr-order-section 占据全部宽度 */
+.content-wrapper :only-child {
+  flex: 0 0 50%; /* 不让其成长或收缩，宽度为容器的50% */
+}
+.form-row {
+  display: flex;
+  align-items: center; /* 垂直居中对齐标签和输入框 */
+  margin-bottom: 10px; /* 行与行之间的间距 */
+}
+
+.form-row label {
+  margin-right: 10px; /* 标签和输入框之间的间隔 */
+}
+
+.search-input {
+  width: 100%; /* 输入框宽度自动填充 */
+  max-width: 300px; /* 所有输入框的最大宽度，这个值应该基于最宽的输入框调整 */
+}
+.edit-store-submit-button {
+  display: block;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  border-radius: 2px;
+  padding: 12px 18px;
+  font-size: 1vw;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: white;
+  background-color: #61b3f7;
+  box-shadow: 0 0 4px #999;
+  outline: none;
+  border-radius: var(--border-radius-1);
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+
+
+}
+.delete-onlineReport-button{
+  display: block;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  border-radius: 2px;
+  padding: 12px 18px;
+  font-size: 1vw;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: white;
+  background-color: #ff7782;
+  box-shadow: 0 0 4px #999;
+  outline: none;
+  border-radius: var(--border-radius-1);
+  width: 140px;
+  padding-top: 10px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 10px;
+  
+  position: absolute;
+  bottom: 40px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+}
+
+
+
 .edit-store-form {
     margin-bottom: 20px;
   }
@@ -27,9 +123,11 @@
   }
   
   .user-box {
-    width: 40%;
+    width: 80%;
+
     border: 1px solid #ccc;
     padding: 10px;
+    margin-top: 10px;
     margin-bottom: 10px;
     border-radius: 4px;
     display: flex;

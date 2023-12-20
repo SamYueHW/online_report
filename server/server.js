@@ -1,5 +1,5 @@
 const cluster = require('cluster');
-const { da } = require('date-fns/locale');
+const { da, ca, de } = require('date-fns/locale');
 const os = require('os');
 
 const cron = require('node-cron');
@@ -26,7 +26,7 @@ if (cluster.isMaster) {
 } else {
 
 const express = require('express');
-// const http = require('http');
+const http = require('http');
 const winston = require('winston');
 
 // const mysql = require('mysql');
@@ -67,9 +67,9 @@ const fs = require('fs');
 const https = require('https');
 
 // 读取证书文件
-const privateKey  = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.key", 'utf8');
-const certificate = fs.readFileSync("C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/enrichpos_com_au.pem", 'utf8');
-const ca = fs.readFileSync('C:/Users/shanu/OneDrive/Desktop/enrichpos_com_au/apache/ca.pem', 'utf8');
+const privateKey  = fs.readFileSync("C:/Coding/qr/qr_order/server/enrichpos_com_au/Apache/enrichpos_com_au.key", 'utf8');
+const certificate = fs.readFileSync("C:/Coding/qr/qr_order/server/enrichpos_com_au/Apache/enrichpos_com_au.pem", 'utf8');
+const ca = fs.readFileSync('C:/Coding/qr/qr_order/server/enrichpos_com_au/Apache//ca.pem', 'utf8');
 
 const credentials = { key: privateKey, cert: certificate, ca: ca };
 
@@ -89,8 +89,8 @@ app.use(express.json({ type: 'application/json' }));
 
 
 app.use(cors({
-  // origin: 'http://localhost:3000', // 指定接受请求的源
-  origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
+  origin: 'http://localhost:3000', // 指定接受请求的源
+  // origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
   credentials: true,  // 允许跨域携带凭证
 }));
 
@@ -116,7 +116,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
   waitForConnections: true,
-  connectionLimit: 10, // 连接池大小，根据需要调整
+  connectionLimit: 3, // 连接池大小，根据需要调整
   queueLimit: 0,
 });
 
@@ -155,6 +155,52 @@ async function executeDb(query, values = null, options = { fetchAll: false, fetc
   }
 }
 
+const pool2 = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_ONLINE_ORDER_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 5,
+  queueLimit: 0,
+});
+async function executeOnlineOrderDb(query, values = null, options = { fetchAll: false, fetchOne: false, commit: false }) {
+  const connection = await pool2.getConnection(); // 从连接池中获取连接
+  const queryTrimmedUpper = query.trim().toUpperCase();
+
+  // 检查是否是 INSERT、UPDATE 或 DELETE 操作，并根据需要开始事务
+  if (queryTrimmedUpper.startsWith('INSERT') || queryTrimmedUpper.startsWith('UPDATE') || queryTrimmedUpper.startsWith('DELETE')) {
+    await connection.beginTransaction(); // 开始事务
+  }
+
+  try {
+    const [results] = await connection.query(query, values);
+
+    // 如果是 INSERT、UPDATE 或 DELETE 操作，则提交事务
+    if (queryTrimmedUpper.startsWith('INSERT') || queryTrimmedUpper.startsWith('UPDATE') || queryTrimmedUpper.startsWith('DELETE')) {
+      await connection.commit();
+    }
+    if (queryTrimmedUpper.startsWith('INSERT')) {
+      // 如果是 INSERT 操作，返回包含 insertId 的对象
+      return { ...results, insertId: results.insertId };
+    }
+    else if (options.fetchAll) {
+      return results;
+    } else if (options.fetchOne) {
+      return results[0];
+    } else {
+      return results;
+    }
+  } catch (error) {
+    // 如果是 INSERT、UPDATE 或 DELETE 操作并出错，则回滚事务
+    if (queryTrimmedUpper.startsWith('INSERT') || queryTrimmedUpper.startsWith('UPDATE') || queryTrimmedUpper.startsWith('DELETE')) {
+      await connection.rollback();
+    }
+    throw error;
+  } finally {
+    connection.release(); // 释放连接回连接池
+  }
+}
 
 // 配置 Passport 策略
 passport.use(
@@ -231,6 +277,7 @@ app.post('/checkStores', (req, res) => {
   const origin_token = req.headers['authorization'];  // 打印所有请求头，以便调试
 
   const token = origin_token.split(' ')[1]; // 获取 JWT Token
+
   const fselected = req.body.fselected;
   const tselected = req.body.tselected;
 
@@ -566,7 +613,14 @@ const fetchData = async (selectedDate, tselectedDate, posVersionQuery, jwtToken)
       const results = await executeDb(query, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
       const dataWithDate = {};
 
-      const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
+      //YYYY-MM-DD to DD-MM-YYYY
+      const selectedDateArray = selectedDate.split('-');
+      const tselectedDateArray = tselectedDate.split('-');
+      const selectedDatenew = `${selectedDateArray[2]}/${selectedDateArray[1]}/${selectedDateArray[0]}`;
+      const tselectedDatenew = `${tselectedDateArray[2]}/${tselectedDateArray[1]}/${tselectedDateArray[0]}`;
+
+      const dateRangeKey = `${selectedDatenew} - ${tselectedDatenew}`;
+  
 
       if (results.length === 0) {
         dataWithDate[dateRangeKey] = {};
@@ -690,7 +744,13 @@ const fetchRangeData = async (selectedDate, tselectedDate, posVersionQuery, jwtT
       }
       const results = await executeDb(query, [selectedStoreId, selectedDate,tselectedDate], { fetchAll: true });
       const dataWithDate = {};
-      const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
+      //YYYY-MM-DD to DD-MM-YYYY
+      const selectedDateArray = selectedDate.split('-');
+      const tselectedDateArray = tselectedDate.split('-');
+      const selectedDatenew = `${selectedDateArray[2]}/${selectedDateArray[1]}/${selectedDateArray[0]}`;
+      const tselectedDatenew = `${tselectedDateArray[2]}/${tselectedDateArray[1]}/${tselectedDateArray[0]}`;
+
+      const dateRangeKey = `${selectedDatenew} - ${tselectedDatenew}`;
 
       if (results.length === 0) {
         dataWithDate[dateRangeKey] = {};
@@ -733,6 +793,7 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
       } else {
         query = `SELECT TotalNetSales, Date FROM report_records_r WHERE StoreId = ? AND Date >= ? AND Date <= ?`;
       }
+   
       const results = await executeDb(query, [selectedStoreId, selectedDate,tselectedDate], { fetchAll: true });
       const dataWithDate = {};
       const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
@@ -772,11 +833,13 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
 
 // 在你的路由处理器中使用这个函数
 app.get('/searchSalesSummary', async (req, res) => {
-  const fselected = req.query.fselected;
+  let fselected = req.query.fselected;
   const fcompared = req.query.fcompared;
-  const tselected = req.query.tselected;
+  let tselected = req.query.tselected;
   const tcompared = req.query.tcompared;
   const dateType = req.query.dateType;
+
+
  
   const origin_token = req.headers['authorization'];
   // 检查 origin_token 是否存在
@@ -786,18 +849,17 @@ app.get('/searchSalesSummary', async (req, res) => {
 
   const token = origin_token.split(' ')[1];
   const pos_version_query = 'SELECT * FROM stores WHERE StoreId = ?';
-  
-  
-  if (fselected !== "" && tselected !== "" && fcompared === "" && tcompared === "" ) {
+
+  if(fselected !== "" && tselected !== "" && fcompared === "" && tcompared === "" ) {
     const result = await fetchSalesSummary(fselected, tselected, pos_version_query, token, dateType);
-    
+
     if (dateType !== 'Hourly') {
     res.status(200).json({
       message: 'success',
       results: [result.data.results],
       hasBranchResult: result.data.hasBranchResult,
       isAdmin: false,
-      posVersion: fselectedResult.data.posVersion,
+      posVersion: result.data.posVersion,
       StoreName: result.data.StoreName,
       LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
       ClientNameResult: result.data.ClientNameResult
@@ -830,8 +892,7 @@ app.get('/searchSalesSummary', async (req, res) => {
         isAdmin: false,
         posVersion: fselectedResult.data.posVersion,
         StoreName: fselectedResult.data.StoreName,
-        LastestReportUpdateTimeResult: fselectedResult.data.LastestReportUpdateTimeResult
-        ,
+        LastestReportUpdateTimeResult: fselectedResult.data.LastestReportUpdateTimeResult,
         ClientNameResult: fselectedResult.data.ClientNameResult
       });}
       else {
@@ -917,6 +978,7 @@ const fetchWeeklyData = async (selectedDate, posVersionQuery, jwtToken) => {
     return { status: 500, data: { message: 'Internal server error' } };
   }
 };
+
 
 app.get('/weeklysales', async (req, res) => {
   
@@ -1105,7 +1167,6 @@ app.post('/receiveData', async (req, res) => {
         const uploadDatetime = paramsObject.Params.UploadDateTime;
         const edition = paramsObject.Params.Edition;
         if (paramsObject.Params.Version) {
-          
           const apiVersion = paramsObject.Params.Version
           const updateApiVersionQuery = 'UPDATE stores SET ApiVersion = ? WHERE StoreId = ?';
           await executeDb(updateApiVersionQuery, [apiVersion, shopId], { commit: true });
@@ -1229,7 +1290,9 @@ app.delete('/user/:userId/:storeId', (req, res) => {
   }
 });
 
-app.delete('/deletestore/:storeId', async (req, res) => {
+app.delete('/deleteOnlineReport/:storeId', async (req, res) => {
+  
+  try {
   const origin_token = req.headers['authorization'];
 
   // 检查 origin_token 是否存在
@@ -1258,13 +1321,28 @@ app.delete('/deletestore/:storeId', async (req, res) => {
       else {
         deleteReportQuery = 'DELETE FROM report_records_r WHERE StoreId = ?';
       }
-      const deleteQuery = 'DELETE FROM stores WHERE StoreId = ?';
+      
+      
+      let deleteQuery;
+      checkFunctionQuery = 'SELECT ReportFunction, OnlineOrderFunction FROM stores WHERE StoreId = ?';
+      await executeDb(checkFunctionQuery, [storeId], { fetchOne: true });
+      const checkFunctionResults = await executeDb(checkFunctionQuery, [storeId], { fetchOne: true });
+      if (checkFunctionResults.OnlineOrderFunction === 1) {
+        deleteQuery = 'UPDATE stores SET AppId = ?, ReportLicenseExpire = ?, ReportFunction = 0 WHERE StoreId = ?';
+        await executeDb(deleteQuery, [null, null, storeId], { commit: true });
+      }
+      else{
+        deleteQuery = 'DELETE FROM stores WHERE StoreId = ?';
+        await executeDb(deleteQuery, [storeId], { commit: true });
+      }
+      
+      
+   
       const deletelinkQuery = 'DELETE FROM customer_store WHERE StoreId = ?';
       const deletePaymentQuery = 'DELETE FROM report_payment_records WHERE StoreId = ?';
       const deleteItemSalesQuery = 'DELETE FROM report_itemsales_records WHERE StoreId = ?';
       const deleteHourlySalesQuery = 'DELETE FROM report_hourlysales_records WHERE StoreId = ?';
-      try {
-        await executeDb(deleteQuery, [storeId], { commit: true });
+     
         await executeDb(deletelinkQuery, [storeId], { commit: true });
         await executeDb(deletePaymentQuery, [storeId], { commit: true });
         await executeDb(deleteItemSalesQuery, [storeId], { commit: true });
@@ -1275,18 +1353,88 @@ app.delete('/deletestore/:storeId', async (req, res) => {
         }
 
         res.status(200).json({ message: 'success' });
-      }
-      catch (error) {
-        console.error('Error querying customer_store table:', error);
-        res.status(500).json({ message: 'Internal server error' });
-      }
+      
     }
     else {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
+    
   });
+}
+catch (error) {
+  console.error('Error querying customer_store table:', error);
+  res.status(500).json({ message: 'Internal server error' });
+}
 });
 
+app.delete('/deleteQR/:storeId', async (req, res) => {
+  
+  try {
+  const origin_token = req.headers['authorization'];
+
+  // 检查 origin_token 是否存在
+  if (!origin_token) {
+    return res.status(401).json({ success: false, message: 'Authorization header missing' });
+  }
+
+  // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+  const token = origin_token.split(' ')[1];
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+    if (err) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    if (decoded.isAdmin) {
+
+      const storeId = req.params.storeId;
+      const deleteMenuQuery = 'DELETE FROM store_menuitem WHERE StoreId = ?';
+      await executeOnlineOrderDb(deleteMenuQuery, [storeId], { fetchAll: true });
+      const deleteOrderQuery = 'DELETE FROM store_order WHERE StoreId = ?';
+      await executeOnlineOrderDb(deleteOrderQuery, [storeId], { fetchAll: true });
+      const deleteSubmenuLinkQuery = 'DELETE FROM store_sub_menulink_detail WHERE StoreId = ?';
+      await executeOnlineOrderDb(deleteSubmenuLinkQuery, [storeId], { fetchAll: true });
+      const deleteQRStoreInfoQuery = 'DELETE FROM store_qr_information WHERE StoreId = ?';
+      await executeOnlineOrderDb(deleteQRStoreInfoQuery, [storeId], { fetchAll: true });
+
+      //image folder delete
+      const menuItemsPath = path.join(__dirname, `../public/images/${shopId}`);
+      if (fs.existsSync(menuItemsPath)) {
+        fs.rmdirSync(menuItemsPath, { recursive: true });
+      }
+      
+      
+      let deleteQuery;
+      checkFunctionQuery = 'SELECT ReportFunction, OnlineOrderFunction FROM stores WHERE StoreId = ?';
+      await executeDb(checkFunctionQuery, [storeId], { fetchOne: true });
+      const checkFunctionResults = await executeDb(checkFunctionQuery, [storeId], { fetchOne: true });
+     
+      if (checkFunctionResults.ReportFunction === 1) {
+        deleteQuery = 'UPDATE stores SET StoreOnlineOrderAppId = ?, QROrderLicenseExpire = ?, OnlineOrderFunction = 0, StripePrivateKey = ?,StripeWebhookKey = ?, StoreUrl= ? WHERE StoreId = ?';
+        await executeDb(deleteQuery, [null, null, null, null, null, storeId], { commit: true });
+        res.status(200).json({ message: 'success' });
+      }
+      else{
+        deleteQuery = 'DELETE FROM stores WHERE StoreId = ?';
+        await executeDb(deleteQuery, [storeId], { commit: true });
+        
+        res.status(201).json({ message: 'success' });
+
+      }
+
+       
+      
+    }
+    else {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    
+  });
+}
+catch (error) {
+  console.error('Error querying customer_store table:', error);
+  res.status(500).json({ message: 'Internal server error' });
+}
+});
 
 
 app.post('/allocateUser', async (req, res) => {
@@ -1304,14 +1452,54 @@ app.post('/allocateUser', async (req, res) => {
 
 app.post('/createStore', async (req, res) => {
 
-  const { storeName, appId, expireDate, posVersion, category} = req.body;
-  const insertQuery = 'INSERT INTO stores (StoreName, AppId, ReportLicenseExpire, PosVersion, Category) VALUES (?, ?, ?, ?, ?)';
+  const { storeName, posVersion, category, Location} = req.body;
+  const insertQuery = 'INSERT INTO stores (StoreName, PosVersion, Category, Location) VALUES (?, ?, ?, ?)';
   try {
-    await executeDb(insertQuery, [storeName, appId, expireDate, posVersion, category], { commit: true });
+    await executeDb(insertQuery, [storeName, posVersion, category, Location], { commit: true });
     res.status(200).json({ message: 'success' });
   }
   catch (error) {
     console.error('Error querying customer_store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+app.post('/activeReport', async (req, res) => {
+  const { storeId,appId, expireDate } = req.body;
+  const updateQuery = 'UPDATE stores SET AppId = ?, ReportLicenseExpire = ?, ReportFunction = 1 WHERE StoreId = ?';
+  try{
+    await executeDb(updateQuery, [appId, expireDate, storeId], { commit: true });
+    res.status(200).json({ message: 'success' });
+  }catch (error) {
+    console.error('Error querying store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+async function encrypt(text) {
+  const secretKey = process.env.STRIPE_KEY_ENCRYPT_SECRET;
+  const key = crypto.createHash('sha256').update(String(secretKey)).digest('base64').substr(0, 32); // 扩展到32字节
+
+  const cipher = crypto.createCipheriv('aes-256-ecb', key, null);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return encrypted;
+}
+
+
+app.post('/activeQROrder',async (req, res) => {
+  const { storeId, appId, expireDate, StripePrivateKey, StripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange } = req.body;
+  //encrypt StripePrivateKey
+  const encryptedStripePrivateKey = await encrypt(StripePrivateKey);
+  const encryptedStripeWebhookKey = await encrypt(StripeWebhookKey);
+
+
+  const updateQuery = 'UPDATE stores SET StoreOnlineOrderAppId = ?, QROrderLicenseExpire = ?, OnlineOrderFunction = 1, StripePrivateKey = ?, StripeWebhookKey = ?, StoreUrl = ?, StoreLatitude = ?, StoreLongitude = ?, StoreLocationRange = ? WHERE StoreId = ?';
+  try{
+    await executeDb(updateQuery, [appId, expireDate, encryptedStripePrivateKey, encryptedStripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude , StoreLocationRange, storeId ], { commit: true });
+    res.status(200).json({ message: 'success' });
+  }catch (error) {
+    console.error('Error querying store table:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -1568,31 +1756,56 @@ app.delete('/deleteCustomer/:cus_id', async (req, res) => {
 
 
 app.put('/store/:storeId', async (req, res) => {
+  try{
   // 获取路由参数中的 storeId
   const storeId = req.params.storeId;
+
   // 从请求体中获取更新的字段
   const receivedDate = req.body.rExpiredDate;
-  const storeName = req.body.storeName;
-  const posVersion = req.body.posVersion;
+  const storeName = String(req.body.storeName);
+  
+
   const rExpiredDate = moment(receivedDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
 
-  const currentDate = new Date().getTime();
-  const expiredDate = new Date(rExpiredDate).getTime();
+  const QrExpiredDate = req.body.QrExpiredDate;
+  const QrExpiredDateObj = moment(QrExpiredDate).format('YYYY-MM-DD');
 
-  // 根据日期选择不同的查询
+  
+  const StripePrivateKey = req.body.StripePrivateKey;
+  const StripeWebhookKey = req.body.StripeWebhookKey;
+  const StoreUrl = req.body.StoreUrl;
+  const StoreLatitude = req.body.StoreLatitude;
+  const StoreLongitude = req.body.StoreLongitude;
+  const StoreLocationRange = req.body.StoreLocationRange;
+
+ 
+
   let query = '';
-  if (expiredDate < currentDate) {
-    query = 'UPDATE Stores SET ReportLicenseExpire = ? WHERE StoreId = ?';
-  } else {
-    query = 'UPDATE Stores SET ReportLicenseExpire = ? WHERE StoreId = ?';
+  
+  if ((StripePrivateKey.length < 5 && StripeWebhookKey.length < 5) ) {
+    query = 'UPDATE stores SET StoreName = ?, ReportLicenseExpire = ?, QROrderLicenseExpire = ?, StoreUrl = ?, StoreLatitude = ?, StoreLongitude = ?, StoreLocationRange = ? WHERE StoreId = ?';
+    await executeDb(query, [storeName, rExpiredDate, QrExpiredDateObj, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange, storeId], { commit: true });
   }
-  let updateName = 'UPDATE Stores SET StoreName = ? WHERE StoreId = ?';
-  let updatePosVersion = 'UPDATE Stores SET PosVersion = ? WHERE StoreId = ?';
+  else if (StripePrivateKey.length < 5) {
+  
+    const encryptedStripeWebhookKey = await encrypt(StripeWebhookKey);
+    query = 'UPDATE stores SET StoreName = ?, ReportLicenseExpire = ?, QROrderLicenseExpire = ?, StripeWebhookKey = ?, StoreUrl = ?, StoreLatitude = ?, StoreLongitude = ?, StoreLocationRange = ? WHERE StoreId = ?';
+    await executeDb(query, [storeName, rExpiredDate, QrExpiredDateObj, encryptedStripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange, storeId], { commit: true });
+  }
+  else if (StripeWebhookKey.length < 5) {
+    const encryptedStripePrivateKey = await encrypt(StripePrivateKey);
+    query = 'UPDATE stores SET StoreName = ?, ReportLicenseExpire = ?, QROrderLicenseExpire = ?, StripePrivateKey = ?, StoreUrl = ?, StoreLatitude = ?, StoreLongitude = ?, StoreLocationRange = ? WHERE StoreId = ?';
+    await executeDb(query, [storeName, rExpiredDate, QrExpiredDateObj, encryptedStripePrivateKey, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange, storeId], { commit: true });
+  }
+  else {
+    const encryptedStripePrivateKey = await encrypt(StripePrivateKey);
+    const encryptedStripeWebhookKey = await encrypt(StripeWebhookKey);
+    query = 'UPDATE stores SET StoreName = ?, ReportLicenseExpire = ?, QROrderLicenseExpire = ?, StripePrivateKey = ?, StripeWebhookKey = ?, StoreUrl = ?, StoreLatitude = ?, StoreLongitude = ?, StoreLocationRange = ? WHERE StoreId = ?';
+    await executeDb(query, [storeName, rExpiredDate, QrExpiredDateObj, encryptedStripePrivateKey, encryptedStripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange, storeId], { commit: true });
+  }
 
-  try {
-    await executeDb(query, [rExpiredDate, storeId]);
-    await executeDb(updateName, [storeName, storeId]);
-    await executeDb(updatePosVersion, [posVersion, storeId]);
+  
+    
     res.status(200).json({ message: 'Store updated successfully' });
   } catch (error) {
     console.error('Error querying stores table:', error);
@@ -1647,6 +1860,8 @@ app.post('/registerCustomer', async (req, res) => {
   }
 }
 );
+
+
 
 app.post('/updatePassword', async (req, res) => {
   try {
@@ -1747,22 +1962,23 @@ async function find_client_socket(store_id) {
 
 
 
-// 创建 HTTPS 服务
+// //创建 HTTPS 服务
 // const httpsServer = https.createServer( app);
-const httpsServer = https.createServer(credentials, app);
-// 启动 HTTPS 服务器
-httpsServer.listen(5050, () => {
-  console.log('HTTPS Server running on port 5050');
-});
+// // const httpsServer = https.createServer(credentials, app);
+// // 启动 HTTPS 服务器
+// httpsServer.listen(5047, () => {
+//   console.log('HTTPS Server running on port 5047');
+// });
 
 
 
 // // 创建 HTTP 服务
-// const httpServer = http.createServer(app);
+const httpServer = http.createServer(app);
 
-// // 启动 HTTP 服务器
-// httpServer.listen(5050, () => {
-//   console.log('HTTP Server running on port 5050');
-// });
+
+// 启动 HTTP 服务器
+httpServer.listen(5046, () => {
+  console.log('HTTP Server running on port 5046');
+});
 
 }

@@ -366,6 +366,40 @@ main .store-list > div .left  >div{
     outline: none;
     border-radius: var(--border-radius-1);
 }
+.edit-button-qr{
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 12px 18px;
+    font-size: 1vw;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: white;
+    background-color: #eba82b;
+    box-shadow: 0 0 4px #999;
+    outline: none;
+    border-radius: var(--border-radius-1);
+}
+
+.edit-button-report{
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 12px 18px;
+    font-size: 1vw;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: white;
+    background-color: #24298787;
+    box-shadow: 0 0 4px #999;
+    outline: none;
+    border-radius: var(--border-radius-1);
+}
+
 
 .daily-report{
     margin-top: 2rem;
@@ -404,16 +438,15 @@ main table td:first-child {
     font-size: 1vw;
     font-weight: bold;
 }
-table tbody tr:first-child td:first-child,
-  table tbody tr:nth-child(2) td:first-child {
-    
-    color: rgba(236, 157, 39, 0.818); 
+table tbody tr:first-child td:first-child:not(.ant-picker-cell),
+table tbody tr:nth-child(2) td:first-child:not(.ant-picker-cell) {
+  color: rgba(236, 157, 39, 0.818); 
 }
 
-table tbody tr:nth-child(3) td:first-child,
-  table tbody tr:nth-child(4) td:first-child {
-    color: var(--color-danger);
-  }
+table tbody tr:nth-child(3) td:first-child:not(.ant-picker-cell),
+table tbody tr:nth-child(4) td:first-child:not(.ant-picker-cell) {
+  color: var(--color-danger);
+}
 
 .rank-list td{
     color: #000;
@@ -875,7 +908,7 @@ main table tbody td.left-align {
 // //     }
   
 // // }
-@media screen and (max-width:935px){
+@media screen and (max-width:1570px){
 
     .container{
         width:100%;
@@ -1028,7 +1061,7 @@ main table tbody td.left-align {
   }
   //515px - 935px
 
-  @media (min-width: 515px) and (max-width: 935px) {
+  @media (min-width: 515px) and (max-width: 1570px) {
     .left-column .analyze-table {
       max-width: none; 
       padding-left: 130px;
@@ -1043,7 +1076,7 @@ main table tbody td.left-align {
   
   
   /* 响应式样式，适用于手机端 */
-  @media (max-width: 935px) {
+  @media (max-width: 1570px) {
     .content{
         height: 100vh;
     }
