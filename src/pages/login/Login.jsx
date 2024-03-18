@@ -70,7 +70,7 @@ const Login = () => {
         }
         
       // 发送加密后的密码到服务器端
-        const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/login', { email: email, password: password}, { withCredentials: true });
+        const response = await axios.post(process.env.REACT_APP_SERVER_URL+'/login', { email: email, password: password});
         // 处理登录成功的情况
         if (response.status === 200) {
           
@@ -108,6 +108,7 @@ const Login = () => {
   };
   useEffect(() => {
     sessionStorage.removeItem('jwtToken');
+    localStorage.removeItem('jwtToken');
     // 其他的初始化代码
   }, []); // 空的依赖数组表示这个 useEffect 只会在组件挂载时运行
   

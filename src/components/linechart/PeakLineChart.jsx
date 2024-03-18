@@ -4,6 +4,7 @@ import * as echarts from 'echarts';
 const PeakLineChart = ({ data }) => {
  
   const chartRef = useRef(null);
+  console.log(data);
     
   useEffect(() => {
     
@@ -77,7 +78,7 @@ const dataItem = data[param.seriesIndex].find(item => item.hour === hour24);
               // 使用 marker 语法添加与图例相同的颜色点
               const colorPoint = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${param.color}"></span>`;
               
-              tooltipText += `${colorPoint}Amount: $${value[1]}<br/>`;
+              tooltipText += `${colorPoint}Amount: $${value[1].toLocaleString()}<br/>`;
               tooltipText += `Transaction: ${dataItem ? dataItem.transaction : 0}<br/><br/>`;
             });
           
@@ -102,8 +103,11 @@ const dataItem = data[param.seriesIndex].find(item => item.hour === hour24);
         type: 'value',
         boundaryGap: [0, '30%'],
         axisLabel: {
-            formatter: '${value}'  
+          formatter: function (value) {
+            // 使用toLocaleString来格式化数字，实现千位分隔符
+            return value.toLocaleString();
           }
+        },
       },
       series: series,
     };

@@ -20,13 +20,14 @@ const NotificationList = lazy(() => import('./pages/notification/NotificationLis
 const CheckStores = lazy(() => import('./pages/dashboard/CheckStores.jsx'));
 const Admindashboard = lazy(() => import('./pages/admin/Admindashboard.jsx'));
 const EditStore = lazy(() => import('./pages/admin/EditStore.jsx'));
+const QrOrderGenerator = lazy(() => import('./pages/admin/QrOrderGenerator.jsx'));
 
 const App = () => {
 
 
   return (
     <BrowserRouter>
-<Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <Routes>
         
         {/* <Route path="/store-history" element={<StoreHistory />} /> */}
@@ -41,6 +42,7 @@ const App = () => {
         <Route path="/checkStores" element={<CheckStores />} />
         <Route path="/admin-dashboard" element={<Admindashboard />} />
         <Route path="/edit-store" element={<EditStore />} />
+        <Route path="/qr-order-generator/:storeId" element={<QrOrderGenerator />} />
 
 
 

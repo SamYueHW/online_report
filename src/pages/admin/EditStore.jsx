@@ -3,25 +3,28 @@ import { useLocation } from 'react-router-dom';
 import { useGetState } from 'ahooks';
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
+import { Modal, Button, Input, notification, Alert, Divider } from 'antd';
 
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './editStore.scss'; // Import the CSS file for EditStore component
 
 import Adminsidebar from "../../components/sidebar/Adminsidebar";
-import { set } from 'date-fns';
+
 
 const EditStore = () => {
   const navigate = useNavigate();
   let query = new URLSearchParams(useLocation().search);
   let storeId = query.get('store');
 
- 
+  const [emailError, setEmailError] = useState('');
+
   const [storeData, setStoreData, getStoreData] = useGetState(null);
   const [isLoading, setIsLoading, getIsLoading] = useGetState(true);
   const [isAdmin, setIsAdmin, getIsAdmin] = useGetState(false);
   const [relatedUserData, setRelatedUserData, getRelatedUserData] = useGetState(null);
   const [allUserData, setAllUserData, getAllUserData] = useGetState(null);
+  const [storeID, setStoreID] = useState(null);
   const [formData, setFormData] = useState({
     rExpiredDate: null,
     storeName: null, 
@@ -58,6 +61,79 @@ const handleModalOpen = () => {
 const handleModalClose = () => {
   setIsModalOpen(false);
 };
+
+const [customerModalVisible, setCustomerModalVisible] = useState(false);
+  const [customer, setCustomer] = useState({ email: '', password: '' });
+  const [isEditing, setIsEditing] = useState(false);
+
+  const openCustomerModal = async () => {
+    setCustomerModalVisible(true);
+    try {
+      //获取jwtToken
+      const token = sessionStorage.getItem('jwtToken');
+      const config = {
+        headers: {
+          'authorization': `Bearer ${token}`
+        }
+      };
+
+      const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/getQRCustomer`, { storeId }, config);
+      
+      if (response.data.results) {
+        setCustomer({ email: response.data.results.Email, password: '', CusId: response.data.results.Id });
+        setIsEditing(false);
+      } else {
+        setCustomer({ email: '', password: '' });
+        setIsEditing(true); // 如果没有客户信息，直接进入编辑模式
+      }
+    } catch (error) {
+      console.error('Error fetching customer data:', error);
+    }
+  };
+
+  const isValidEmail = (email) => {
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email) && email.length <= 45;
+  };
+  
+  const handleCustomerSave = async () => {
+    try {
+      if (!isValidEmail(customer.email)) {
+        setEmailError("Invalid email format or length exceeds 45 characters");
+        return;
+      }
+
+      if (customer.password.length === 0) {
+        setCustomerModalVisible(false);
+        return;
+      }
+      setEmailError(''); 
+      const token = sessionStorage.getItem('jwtToken');
+      const config = {
+        headers: {
+          'authorization': `Bearer ${token}`
+        }
+      };
+      
+      const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/updateQRCustomer`,{ storeId, customer },config);
+
+      if (response.status === 200) {
+        notification.success({ message: 'Customer created successfully' });
+      } 
+      else if(response.status === 201){
+        notification.success({ message: 'Customer updated successfully' });
+      }
+      else {
+        notification.error({ message: 'Failed to update customer' });
+      }
+    } catch (error) {
+      notification.error({ message: 'Error updating customer' });
+    }
+    setCustomerModalVisible(false);
+  };
+
+
 
 const handleUserSelect = (user) => {
   setSelectedUser(user);
@@ -107,6 +183,14 @@ const handleLogout = async () => {
       console.log(error);
     }
 };
+useEffect(() => {
+  if(storeId){
+  setStoreID(storeId);
+
+  }
+  
+}, [storeId]);
+  
 
   useEffect(() => {
     const checkAccount = async () => {
@@ -161,7 +245,9 @@ const handleLogout = async () => {
         navigate('/');
       }
     };
-    checkAccount();
+    if(storeId){
+      checkAccount();
+    }
   }, [storeId]);
 
   const getYesterdayDate = () => {
@@ -183,6 +269,42 @@ const handleLogout = async () => {
     }));
   };
 
+  const handleDeleteQRCustomer = async () => {
+    // 弹出确认对话框
+    Modal.confirm({
+      title: 'Confirm Deletion',
+      content: 'Are you sure you want to delete this user?',
+      okText: 'Yes',
+      okType: 'danger',
+      cancelText: 'No',
+      onOk: async () => {
+        try {
+          const userId = customer.CusId;
+          // 获取jwtToken
+          const token = sessionStorage.getItem('jwtToken');
+          const config = {
+            headers: {
+              'authorization': `Bearer ${token}`
+            }
+          };
+          const response = await axios.delete(`${process.env.REACT_APP_SERVER_URL}/deleteQRUser/${userId}`, config);
+          if (response.status === 200) {
+            // 用户删除成功后的逻辑
+            notification.success({ message: 'User deleted successfully' });
+            setCustomer({ email: '', password: '' });
+            setIsEditing(true);
+          } else {
+            // 用户删除失败后的逻辑
+            notification.error({ message: 'Failed to delete user' });
+          }
+        } catch (error) {
+          console.error("Error deleting user:", error);
+        }
+      },
+    });
+  };
+  
+
   const handleDeleteUser = async (userId,storeId) => {
     try {
       await axios.delete(process.env.REACT_APP_SERVER_URL + '/user/' + userId + '/' + storeId);
@@ -194,6 +316,28 @@ const handleLogout = async () => {
       console.log(error);
       // 处理删除用户失败的逻辑
     }
+  };
+  const handleQRCodeGenerator = async () => {
+  
+    
+    navigate(`/qr-order-generator/${storeID}`);
+
+  };
+  const customerStoreLogin = async () => {
+    const token = sessionStorage.getItem('jwtToken'); // 从 sessionStorage 获取 JWT Token
+    const config = {
+      headers: {
+        'authorization': `Bearer ${token}`
+      }
+    };
+   
+    const response = await axios.post(`${process.env.REACT_APP_SERVER_URL}/qrAdminLogin`, { storeId }, config);
+    if (response.status === 200) {
+      const token = response.data.jwt;
+      //new page
+      window.open(`${process.env.REACT_APP_FONT_QR_URL}/adminEnrich/${storeId}/${token}`);
+      // window.location.href = `${process.env.REACT_APP_FONT_QR_URL}/adminEnrich/${storeId}/${token}`;
+  };
   };
   const handleDelete = async (storeId, linkedCustomers) => {
 
@@ -232,8 +376,6 @@ const handleLogout = async () => {
     }
   };
   const handleDeleteQR = async (storeId) => {
-
-    
     try {
       const isConfirmed = window.confirm("Are you sure you want to disable QR Order function?");
       if (!isConfirmed) {
@@ -268,7 +410,7 @@ const handleLogout = async () => {
   const handleSubmit = async () => {
  
     try {
-      console.log(formData);
+      
       const date = new Date(formData.rExpiredDate);
       const formattedDate = date.toLocaleDateString('en-AU');
   
@@ -306,6 +448,15 @@ const handleLogout = async () => {
       // 更新失败后的处理逻辑
     }
   };
+  useEffect(() => {
+    // 在组件挂载时设置
+    document.body.style.overflow = 'auto';  // 或者 'scroll'
+
+    // 在组件卸载时还原
+    return () => {
+      document.body.style.overflow = 'hidden'; // 或者原来的值
+    };
+  }, []); 
   
 
   if (getIsLoading()) {
@@ -392,6 +543,67 @@ const handleLogout = async () => {
           <div className="qr-order-section">
           <form className="edit-report-form">
           <h2>QR Order</h2>
+          {/* <button className='qr-button' onClick={() => handleQRCodeGenerator()}>Generate QR Code</button> */}
+          <div className="qr-button-section">
+          <Button className="qr-button_custom" onClick={() => handleQRCodeGenerator()}>Generate QR Code</Button>
+          <Button className="customer-button" onClick={openCustomerModal}>Admin Account</Button>
+          <Button className="customer-button" onClick={() => customerStoreLogin()}>Customer Store</Button>
+          </div>
+
+      <Modal
+        title={isEditing ? "Register Admin Account" : "Edit Admin Account"}
+        open={customerModalVisible}
+        onOk={handleCustomerSave}
+        onCancel={() => {
+          setCustomerModalVisible(false);
+          setEmailError(''); // 清除电子邮件错误信息
+        }}
+      >
+  <div className="modal-input-section">
+  {emailError && <Alert message={emailError} type="error" />}
+  <div className="input-wrapper">
+      <label>Admin Email:</label>
+      <Input 
+        className="input-field"
+        placeholder="Email"
+        value={customer.email}
+        onChange={(e) => setCustomer({...customer, email: e.target.value})}
+        disabled={!isEditing}
+      />
+    </div>
+    
+    <div className="input-wrapper">
+    <label>{!isEditing ? "Reset Password:" : "Password:"}</label>
+      <Input
+        className="input-field"
+        placeholder="Password"
+        type="password"
+        value={customer.password}
+        onChange={(e) => setCustomer({...customer, password: e.target.value})}
+      />
+    </div>
+  </div>
+    {!isEditing && <Button 
+      type="primary" 
+      danger
+      onClick={handleDeleteQRCustomer}
+    >
+      Delete Account
+    </Button>}
+
+    <Divider />
+    {/* <div className='input-wrapper'>
+     
+      <label>Manager Email:</label>
+      <Input 
+        className="input-field"
+        placeholder="Email"
+        value={customer.email}
+        onChange={(e) => setCustomer({...customer, email: e.target.value})}
+        disabled={!isEditing}
+      />
+    </div> */}
+          </Modal>
             <div className='qr-edit-section'>
            
             <div style={{marginTop:'5px'}}><p>QR Order App ID: {storeData.StoreOnlineOrderAppId}</p></div>

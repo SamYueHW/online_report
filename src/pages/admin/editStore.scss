@@ -1,7 +1,44 @@
+.qr-button-section {
+  display: flex;
+  gap: 10px; // 按钮之间的间隙
+  margin-bottom: 20px; // 和下一个元素之间的间隙
+
+
+}
+.input-wrapper {
+  margin-bottom: 10px;
+
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+
+  .input-field {
+    width: 100%;
+    // 其他样式...
+  }
+}
+
+.modal-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; // 为输入框之间添加间隔
+
+  .input-field {
+    max-width: 300px; // 限制输入框的最大宽度
+  }
+}
+
+
 
 .store-setup {
   display: flex;
   flex-direction: column; /* 主轴方向为垂直 */
+  margin-top: 3rem;
+  margin-left: 10rem;
+  
+
 }
 
 .content-wrapper {
@@ -65,6 +102,26 @@
 
 
 }
+.qr-button {
+  display: block;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  border-radius: 2px;
+  padding: 12px 18px;
+  font-size: 1vw;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: white;
+  background-color: #61b3f7;
+  box-shadow: 0 0 4px #999;
+  outline: none;
+  border-radius: var(--border-radius-1);
+  width: 200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .delete-onlineReport-button{
   display: block;
   margin-top: 6px;
@@ -97,12 +154,7 @@
 .edit-store-form {
     margin-bottom: 20px;
   }
-  
-  .store-setup{
-    margin-top: 3rem;
-    margin-left: 10rem;
 
-  }
   .date-picker {
     padding: 8px;
     border: 1px solid #ccc;

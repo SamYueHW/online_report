@@ -1,29 +1,29 @@
-const cluster = require('cluster');
-const { da, ca, de } = require('date-fns/locale');
-const os = require('os');
+// const cluster = require('cluster');
+// const { da, ca, de } = require('date-fns/locale');
+// const os = require('os');
 
-const cron = require('node-cron');
+// const cron = require('node-cron');
 
 // // 全局变量，用于追踪/dashboard路由的访问次数
 // let trackDashboardAccess = 0;
 
-if (cluster.isMaster) {
-  // 主进程逻辑
-  const numCPUs = os.cpus().length;
+// if (cluster.isMaster) {
+//   // 主进程逻辑
+//   const numCPUs = os.cpus().length;
 
-  console.log(`主进程 ${process.pid} 正在运行`);
-  // 根据 CPU 核心数创建工作进程
-  for (let i = 0; i < numCPUs-1; i++) {
-    cluster.fork();
-  }
+//   console.log(`主进程 ${process.pid} 正在运行`);
+//   // 根据 CPU 核心数创建工作进程
+//   for (let i = 0; i < numCPUs-1; i++) {
+//     cluster.fork();
+//   }
 
-  cluster.on('exit', (worker) => {
-    console.log(`工作进程 ${worker.process.pid} 已退出`);
-    // 如果需要，可以在这里重启工作进程
-    cluster.fork();
-  });
+//   cluster.on('exit', (worker) => {
+//     console.log(`工作进程 ${worker.process.pid} 已退出`);
+//     // 如果需要，可以在这里重启工作进程
+//     cluster.fork();
+//   });
 
-} else {
+// } else {
 
 const express = require('express');
 const http = require('http');
@@ -51,7 +51,6 @@ const { connect } = require('http2');
 const fernet = require('fernet');
 const { darkScrollbar } = require('@mui/material');
 
-const cors = require('cors');
 const { Console, group } = require('console');
 const moment = require('moment');
 const momentlocal = require('moment-timezone');
@@ -67,9 +66,9 @@ const fs = require('fs');
 const https = require('https');
 
 // 读取证书文件
-const privateKey  = fs.readFileSync("C:/Coding/qr/qr_order/server/enrichpos_com_au/Apache/enrichpos_com_au.key", 'utf8');
-const certificate = fs.readFileSync("C:/Coding/qr/qr_order/server/enrichpos_com_au/Apache/enrichpos_com_au.pem", 'utf8');
-const ca = fs.readFileSync('C:/Coding/qr/qr_order/server/enrichpos_com_au/Apache//ca.pem', 'utf8');
+const privateKey  = fs.readFileSync("C:/Coding/qr/qr_order/server/enrichpos_com_au/apache/enrichpos_com_au.key", 'utf8');
+const certificate = fs.readFileSync("C:/Coding/qr/qr_order/server/enrichpos_com_au/apache/enrichpos_com_au.pem", 'utf8');
+const ca = fs.readFileSync('C:/Coding/qr/qr_order/server/enrichpos_com_au/apache//ca.pem', 'utf8');
 
 const credentials = { key: privateKey, cert: certificate, ca: ca };
 
@@ -88,12 +87,23 @@ app.use(express.text({ type: 'text/plain' }));
 app.use(express.json({ type: 'application/json' }));
 
 
-app.use(cors({
-  origin: 'http://localhost:3000', // 指定接受请求的源
-  // origin: 'https://enrichpos.com.au:3001', // 指定接受请求的源
-  credentials: true,  // 允许跨域携带凭证
-}));
+const cors = require('cors');
 
+
+app.use(cors({
+  origin: ['https://enrichpos.com.au:3002','https://enrichpos.com.au'], // 明确指定允许的来源
+  // origin: 'http://localhost:3002', // 明确指定允许的来源
+  
+  
+  credentials: true, 
+}));
+// app.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Origin', 'https://enrichpos.com.au:3002')
+//   res.header('Access-Control-Allow-Credentials', 'true')
+//   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
+//   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+//   next();
+// });
 
 app.use(express.urlencoded({extended: false}))
 
@@ -799,20 +809,29 @@ const fetchSalesSummary = async (selectedDate, tselectedDate, posVersionQuery, j
       const dateRangeKey = `${selectedDate} - ${tselectedDate}`;
 
       const hourlyResult = {};
-      const hourlyQuery = `SELECT SalesHour, Transaction, Amount, Date FROM report_hourlysales_records WHERE StoreId = ? AND Date >= ? AND Date <= ? ORDER BY SalesHour ASC`;
-      const hourlyResults = await executeDb(hourlyQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+      // if (dateType === 'day') {
+        const hourlyQuery = `SELECT SalesHour, Transaction, Amount, Date FROM report_hourlysales_records WHERE StoreId = ? AND Date >= ? AND Date <= ? ORDER BY SalesHour ASC`;
+        const hourlyResults = await executeDb(hourlyQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+        if (hourlyResults.length === 0) {
+          hourlyResult[dateRangeKey] = {};
+        } else {
+          hourlyResult[dateRangeKey] = hourlyResults;
+        }
+      // }
+      // const hourlyQuery = `SELECT SalesHour, Transaction, Amount, Date FROM report_hourlysales_records WHERE StoreId = ? AND Date >= ? AND Date <= ? ORDER BY SalesHour ASC`;
+      // const hourlyResults = await executeDb(hourlyQuery, [selectedStoreId, selectedDate, tselectedDate], { fetchAll: true });
+          
+      // if (hourlyResults.length === 0) {
+      //   hourlyResult[dateRangeKey] = {};
+      // } else {
+      //   hourlyResult[dateRangeKey] = hourlyResults;
+      // }
       
       const customer_name_query = 'SELECT CustomerName FROM customers WHERE email = ?';
       const customer_name_results = await executeDb(customer_name_query, [decoded.username], { fetchAll: true });
       const ClientNameResult = customer_name_results[0].CustomerName;
       
-      
-      if (hourlyResults.length === 0) {
-        hourlyResult[dateRangeKey] = {};
-      } else {
-        hourlyResult[dateRangeKey] = hourlyResults;
-      }
-      
+  
 
       if (results.length === 0) {
         dataWithDate[dateRangeKey] = {};
@@ -853,16 +872,18 @@ app.get('/searchSalesSummary', async (req, res) => {
   if(fselected !== "" && tselected !== "" && fcompared === "" && tcompared === "" ) {
     const result = await fetchSalesSummary(fselected, tselected, pos_version_query, token, dateType);
 
-    if (dateType !== 'Hourly') {
+    if (dateType !== 'day') {
     res.status(200).json({
       message: 'success',
       results: [result.data.results],
       hasBranchResult: result.data.hasBranchResult,
       isAdmin: false,
       posVersion: result.data.posVersion,
+      hourlyResult: [result.data.hourlyResult],
       StoreName: result.data.StoreName,
       LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
-      ClientNameResult: result.data.ClientNameResult
+      ClientNameResult: result.data.ClientNameResult,
+      DateType: dateType
     });}
     else {
       res.status(200).json({
@@ -874,7 +895,8 @@ app.get('/searchSalesSummary', async (req, res) => {
         hourlyResult: [result.data.hourlyResult],
         StoreName: result.data.StoreName,
         LastestReportUpdateTimeResult: result.data.LastestReportUpdateTimeResult,
-        ClientNameResult: result.data.ClientNameResult
+        ClientNameResult: result.data.ClientNameResult,
+        DateType: dateType
       });
     }
   } else if (fselected !== "" && fcompared !== "" && tselected !== "" && tcompared !== "") {
@@ -882,18 +904,20 @@ app.get('/searchSalesSummary', async (req, res) => {
     const fcomparedResult = await fetchSalesSummary(fcompared, tcompared, pos_version_query, token, dateType);
     
     if (fselectedResult.status===200 && fcomparedResult.status===200) {
-      if (dateType !== 'Hourly') {
+      if (dateType !== 'day') {
 
       res.status(200).json({
         message: 'success',
         results: [fselectedResult.data.results,
           fcomparedResult.data.results],
+          hourlyResult: [fselectedResult.data.hourlyResult,fcomparedResult.data.hourlyResult],
         hasBranchResult: fselectedResult.data.hasBranchResult,
         isAdmin: false,
         posVersion: fselectedResult.data.posVersion,
         StoreName: fselectedResult.data.StoreName,
         LastestReportUpdateTimeResult: fselectedResult.data.LastestReportUpdateTimeResult,
-        ClientNameResult: fselectedResult.data.ClientNameResult
+        ClientNameResult: fselectedResult.data.ClientNameResult,
+        DateType: dateType
       });}
       else {
         
@@ -901,6 +925,7 @@ app.get('/searchSalesSummary', async (req, res) => {
           message: 'success',
           results: [fselectedResult.data.results,
             fcomparedResult.data.results],
+          hourlyResult: [fselectedResult.data.hourlyResult, fcomparedResult.data.hourlyResult],
           hasBranchResult: fselectedResult.data.hasBranchResult,
           isAdmin: false,
           posVersion: fselectedResult.data.posVersion,
@@ -909,7 +934,8 @@ app.get('/searchSalesSummary', async (req, res) => {
             StoreName: fselectedResult.data.StoreName,
         LastestReportUpdateTimeResult: fselectedResult.data.LastestReportUpdateTimeResult
         ,
-        ClientNameResult: fselectedResult.data.ClientNameResult
+        ClientNameResult: fselectedResult.data.ClientNameResult,
+        DateType: dateType
         });
       }
     } else {
@@ -1397,7 +1423,7 @@ app.delete('/deleteQR/:storeId', async (req, res) => {
       await executeOnlineOrderDb(deleteQRStoreInfoQuery, [storeId], { fetchAll: true });
 
       //image folder delete
-      const menuItemsPath = path.join(__dirname, `../public/images/${shopId}`);
+      const menuItemsPath = path.join(__dirname, `../public/images/${storeId}`);
       if (fs.existsSync(menuItemsPath)) {
         fs.rmdirSync(menuItemsPath, { recursive: true });
       }
@@ -1488,15 +1514,85 @@ async function encrypt(text) {
 
 
 app.post('/activeQROrder',async (req, res) => {
-  const { storeId, appId, expireDate, StripePrivateKey, StripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange } = req.body;
+  let { storeId, appId, expireDate, StripePrivateKey, StripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude, StoreLocationRange } = req.body;
   //encrypt StripePrivateKey
-  const encryptedStripePrivateKey = await encrypt(StripePrivateKey);
-  const encryptedStripeWebhookKey = await encrypt(StripeWebhookKey);
+  let encryptedStripePrivateKey = '';
+  let encryptedStripeWebhookKey = '';
+  let insertQRInformationQuery;
+ //StoreId	PayFirst	UseLocation	MultiLanguage	FirstLanguage	SecondLanguage	MondayStart	MondayEnd	TuesdayStart	TuesdayEnd	WednesdayStart	WednesdayEnd	ThursdayStart	ThursdayEnd	FridayStart	FridayEnd	SaturdayStart	SaturdayEnd	SundayStart	SundayEnd	SurchargeDescription	Surcharge	WeekendSurcharge	
 
+  if (StripePrivateKey !== '' && StripeWebhookKey !== '') {
+   encryptedStripePrivateKey = await encrypt(StripePrivateKey);
+   encryptedStripeWebhookKey = await encrypt(StripeWebhookKey);
+   insertQRInformationQuery = `
+   INSERT INTO store_qr_information (
+     StoreId,
+     PayFirst,
+     UseLocation,
+     MultiLanguage,
+     FirstLanguage,
+     SecondLanguage,
+     MondayStart,
+     MondayEnd,
+     TuesdayStart,
+     TuesdayEnd,
+     WednesdayStart,
+     WednesdayEnd,
+     ThursdayStart,
+     ThursdayEnd,
+     FridayStart,
+     FridayEnd,
+     SaturdayStart,
+     SaturdayEnd,
+     SundayStart,
+     SundayEnd,
+     SurchargeDescription,
+     Surcharge,
+     WeekendSurcharge
+   )VALUES (?, 1, 0, 0, null, null, '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', 'Surcharge', 0, 0)`;
+   }
+  else {
+    encryptedStripePrivateKey = null;
+    encryptedStripeWebhookKey = null;
+    insertQRInformationQuery = `
+    INSERT INTO store_qr_information (
+      StoreId,
+      PayFirst,
+      UseLocation,
+      MultiLanguage,
+      FirstLanguage,
+      SecondLanguage,
+      MondayStart,
+      MondayEnd,
+      TuesdayStart,
+      TuesdayEnd,
+      WednesdayStart,
+      WednesdayEnd,
+      ThursdayStart,
+      ThursdayEnd,
+      FridayStart,
+      FridayEnd,
+      SaturdayStart,
+      SaturdayEnd,
+      SundayStart,
+      SundayEnd,
+      SurchargeDescription,
+      Surcharge,
+      WeekendSurcharge
+    ) VALUES (?, 0, 1, 0, null, null, '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', '08:00', '23:59', 'Surcharge', 0, 0)`;
+   
+  }
 
+  if (StoreLatitude === '' && StoreLongitude === '') {
+    StoreLatitude = null;
+    StoreLongitude = null;
+    
+  }
   const updateQuery = 'UPDATE stores SET StoreOnlineOrderAppId = ?, QROrderLicenseExpire = ?, OnlineOrderFunction = 1, StripePrivateKey = ?, StripeWebhookKey = ?, StoreUrl = ?, StoreLatitude = ?, StoreLongitude = ?, StoreLocationRange = ? WHERE StoreId = ?';
+ 
   try{
     await executeDb(updateQuery, [appId, expireDate, encryptedStripePrivateKey, encryptedStripeWebhookKey, StoreUrl, StoreLatitude, StoreLongitude , StoreLocationRange, storeId ], { commit: true });
+    await executeOnlineOrderDb(insertQRInformationQuery, [storeId], { commit: true });
     res.status(200).json({ message: 'success' });
   }catch (error) {
     console.error('Error querying store table:', error);
@@ -1556,11 +1652,45 @@ app.post('/update-jwt', async (req, res) => {
   });
 });
 
+app.post('/qrAdminLogin', async(req, res) => {
+ 
+  const origin_token = req.headers['authorization'];
+ 
+    
+    // 检查 origin_token 是否存在
+    if (!origin_token) {
+      return res.status(401).json({ success: false, message: 'Authorization header missing' });
+    }
   
+    const token = origin_token.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+      
+      if (decoded.isAdmin) {
+
+        const storeId = req.body.storeId;
+        
+        const payload = { cusId:0, email: "admin", storeId: storeId, storeAdmin: true };
+       // 服务器端的示例代码
+        const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
+      
+
+        return res.status(200).json({ jwt: token, storeId: storeId });
+      }
+      else {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+    }
+    );
+});
+
+
 
 // 处理登录请求
 app.post('/login', passport.authenticate('local'), async(req, res) => {
-  
+
   const getStoreIdQuery = 'SELECT StoreId FROM customer_store WHERE cus_id = ?';
   const storeIdsResult = await executeDb(getStoreIdQuery, [req.user.cus_id], { fetchAll: true, commit: false });
 
@@ -1582,6 +1712,10 @@ app.post('/login', passport.authenticate('local'), async(req, res) => {
       res.status(200).json({ token: token, isAdmin: true });
     }
     else {
+    
+      const insertLogQuery = 'INSERT INTO user_login_logs (cus_id, login_time) VALUES (?, NOW())';
+      await executeDb(insertLogQuery, [req.user.cus_id], { commit: true });
+
       res.status(200).json({ token: token, isAdmin: false });
     }
     
@@ -1601,12 +1735,145 @@ app.post('/login', passport.authenticate('local'), async(req, res) => {
       res.status(200).json({ token: token, isAdmin: true });
     }
     else {
+      const insertLogQuery = 'INSERT INTO user_login_logs (cus_id, login_time) VALUES (?, NOW())';
+      await executeDb(insertLogQuery, [req.user.cus_id], { commit: true });
       res.status(200).json({ token: token, isAdmin: false });
     }
   }
 
 
 
+});
+
+async function registerUser(username, password, storeId ) {
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10); // 使用 bcrypt 对密码进行加密，10 是 salt rounds
+    const selectQuery = 'SELECT * FROM customer WHERE StoreId = ?'; 
+    const results = await executeOnlineOrderDb(selectQuery, [storeId], { fetchAll: true });
+    if (results.length > 0 && results[0].Email === username) {
+      const updateQuery = 'UPDATE customer SET Password = ? WHERE Email = ?';
+      await executeOnlineOrderDb(updateQuery, [hashedPassword, username]);
+      return 1;
+    }
+    else{
+
+      const insertQuery = 'INSERT INTO customer (Email, Password, StoreId) VALUES (?, ?, ?)';
+      await executeOnlineOrderDb(insertQuery, [username, hashedPassword, storeId]); // 存储用户名和加密后的密码
+      return 0;
+  }
+    
+  } catch (error) {
+   
+    return -1;
+  }
+}
+app.post('/getQRCustomer', async (req, res) => {
+  try{
+    const origin_token = req.headers['authorization'];
+    
+    // 检查 origin_token 是否存在
+    if (!origin_token) {
+      return res.status(401).json({ success: false, message: 'Authorization header missing' });
+    }
+  
+    const token = origin_token.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+      
+      if (decoded.isAdmin) {
+
+        const storeId = req.body.storeId;
+       
+        const query = 'SELECT * FROM customer WHERE StoreId = ?';
+        const results = await executeOnlineOrderDb(query, [storeId], { fetchOne: true });
+        res.status(200).json({ message: 'success', results: results });
+      }
+      else {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+    });
+  }
+  catch (error) {
+    console.error('Error querying store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/updateQRCustomer', async (req, res) => {
+  try {
+    const origin_token = req.headers['authorization'];
+    
+    // 检查 origin_token 是否存在
+    if (!origin_token) {
+      return res.status(401).json({ success: false, message: 'Authorization header missing' });
+    }
+  
+    const token = origin_token.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+      
+      if (decoded.isAdmin) {
+        const { customer, storeId } = req.body;
+        
+
+        const registerResult = await registerUser(customer.email, customer.password, storeId);
+        if (registerResult===0) {
+          res.status(200).send('User registered successfully');
+        } 
+        else if(registerResult===1)
+        {
+          res.status(201).send('User updated successfully');
+        }
+        else{
+          res.status(500).send('Error registering new user');
+        
+        }
+      }
+      else {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+    });
+  } catch (error) {
+    res.status(500).send('Error registering new user');
+  }
+});
+
+app.delete('/deleteQRUser/:userId', async (req, res) => {
+  try{
+    const origin_token = req.headers['authorization'];
+    
+    // 检查 origin_token 是否存在
+    if (!origin_token) {
+      return res.status(401).json({ success: false, message: 'Authorization header missing' });
+    }
+  
+    const token = origin_token.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+      
+      if (decoded.isAdmin) {
+        const userId = req.params.userId;
+        const deleteQuery = 'DELETE FROM customer WHERE Id = ?';
+        await executeOnlineOrderDb(deleteQuery, [userId], { commit: true });
+        res.status(200).json({ message: 'success' });
+      }
+      else {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+    }
+    );
+
+  }
+  catch (error) {
+    console.error('Error querying store table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 app.get('/logout', (req, res) => {
@@ -1753,7 +2020,39 @@ app.delete('/deleteCustomer/:cus_id', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+app.get('/fetchTableNumber/:storeId', async (req, res) => {
+  try {
 
+    const origin_token = req.headers['authorization'];
+    // 检查 origin_token 是否存在
+    if (!origin_token) {
+      return res.status(401).json({ success: false, message: 'Authorization header missing' });
+    }
+     // 现在我们知道 origin_token 是存在的，可以安全地调用 split
+    const token = origin_token.split(' ')[1];
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY, async(err, decoded) => {
+      if (err) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+      if (decoded.isAdmin) {
+        const storeId = req.params.storeId;
+        
+        const query = 'SELECT * FROM store_table_number WHERE StoreId = ?';
+        const results = await executeOnlineOrderDb(query, [storeId], { fetchAll: true });
+        const storeUrl = await executeDb('SELECT StoreUrl FROM stores WHERE StoreId = ?', [storeId], { fetchOne: true });
+        res.status(200).json({ message: 'success', results: results, storeUrl: storeUrl.StoreUrl });
+      }
+      else {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+      }
+    });
+  }
+  catch (error) {
+    console.error('Error querying store_table_number table:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 app.put('/store/:storeId', async (req, res) => {
   try{
@@ -1905,6 +2204,22 @@ app.post('/updatePassword', async (req, res) => {
   }
 });
 
+app.get('/getLogData', async (req, res) => {
+  try {
+    
+    const query = 'SELECT ull.*, cs.StoreId, s.Category FROM user_login_logs ull JOIN customer_store cs ON ull.cus_id = cs.cus_id JOIN stores s ON cs.StoreId = s.StoreId';
+
+    const loginLogsResults = await executeDb(query, [], { fetchAll: true });
+    const storeCountquery = 'SELECT * FROM daily_user_counts';
+    const storeCountResults = await executeDb(storeCountquery, [], { fetchAll: true });
+    res.status(200).json({ message: 'success', userCounts: loginLogsResults, dailyCounts: storeCountResults });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'An error occurred while fetching the data' });
+  }
+});
+
+
 async function update_socket_sql(store_id, socket_id) {
   try {
     const selectQuery = 'SELECT StoreId FROM Stores WHERE StoreId = ?';
@@ -1923,6 +2238,7 @@ async function update_socket_sql(store_id, socket_id) {
     console.error('Error occurred:', error);
   }
 }
+
 
 async function find_client_socket(store_id) {
   console.log('Finding client socket for store ID', store_id);
@@ -1962,23 +2278,67 @@ async function find_client_socket(store_id) {
 
 
 
-// //创建 HTTPS 服务
-// const httpsServer = https.createServer( app);
-// // const httpsServer = https.createServer(credentials, app);
-// // 启动 HTTPS 服务器
-// httpsServer.listen(5047, () => {
-//   console.log('HTTPS Server running on port 5047');
-// });
 
+
+
+
+// if (process.env.NODE_APP_INSTANCE === '0') {
+//   cron.schedule('59 23 * * *', async () => {
+//     // 定时任务逻辑
+//   });
+// }
+const cron = require('node-cron');
+if (process.env.NODE_APP_INSTANCE === '0') {
+// cron.schedule('59 23 * * *', async () => {
+  cron.schedule('01 00 * * *', async () => {
+  
+
+  // 在这里执行数据库查询和更新逻辑
+  try {
+    const totalStoresQuery = 'SELECT COUNT(*) AS totalStores FROM stores WHERE LastestReportUpdateTime IS NOT NULL AND Category = ?';
+    const totalStoresResultsSyd = await executeDb(totalStoresQuery, ['syd'], { fetchAll: true });
+    const totalStoresResultsMel = await executeDb(totalStoresQuery, ['mel'], { fetchAll: true });
+    const totalStoresResultsBris = await executeDb(totalStoresQuery, ['qld'], { fetchAll: true });
+
+    const totalStoresSyd = totalStoresResultsSyd[0].totalStores;
+    const totalStoresMel = totalStoresResultsMel[0].totalStores;
+    const totalStoresBris = totalStoresResultsBris[0].totalStores;
+
+    // 更新 current_user_count 表
+    if (totalStoresResultsSyd.length === 0) {
+        
+      const insertQuery = 'INSERT INTO daily_user_counts (Date, UserCount, Category) VALUES (CURDATE(), ?, ?)';
+      await executeDb(insertQuery, [totalStoresSyd, 'syd'], { commit: true });
+      await executeDb(insertQuery, [totalStoresMel, 'mel'], { commit: true });
+      await executeDb(insertQuery, [totalStoresBris, 'qld'], { commit: true });
+      console.log('Successfully updated daily_user_counts table');
+    }
+
+
+    await executeDb(insertQuery, [totalStores], { commit: true });
+
+    console.log('Successfully updated daily_user_counts table');
+  } catch (error) {
+    console.error('Error occurred during cron job:', error);
+  }
+});
+}
+//创建 HTTPS 服务
+
+const httpsServer = https.createServer(credentials, app);
+// 启动 HTTPS 服务器
+httpsServer.listen(5046, () => {
+  console.log('HTTPS Server running on port 5046');
+});
 
 
 // // 创建 HTTP 服务
-const httpServer = http.createServer(app);
+// const httpServer = http.createServer(app);
 
 
-// 启动 HTTP 服务器
-httpServer.listen(5046, () => {
-  console.log('HTTP Server running on port 5046');
-});
 
-}
+// // 启动 HTTP 服务器
+// httpServer.listen(5046, () => {
+//   console.log('HTTP Server running on port 5046');
+// });
+

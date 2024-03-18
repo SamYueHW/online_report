@@ -16,10 +16,19 @@ import timezone from 'dayjs/plugin/timezone'; // 导入时区插件
 import { set } from "date-fns";
 import { defaultTheme } from "antd/es/theme/context";
 
+import { Button,Checkbox } from 'antd';
+import LogDataModal from "../../components/modal/LogDataModal";
+
 
 const Admindashboard = ({ }) => {
     const navigate = useNavigate();
     const australiaDate =  moment.tz('Australia/Sydney').format('YYYY-MM-DD');
+    const [isPayFirst, setIsPayFirst] = useState(true); // 新增状态来追踪复选框
+
+    // 处理复选框状态改变的函数
+    const handleCheckboxChange = e => {
+      setIsPayFirst(e.target.checked);
+    };
 
     const [user, setUser, getUser] = useGetState(null);
     const [searchValue, setSearchValue] = useState('');
@@ -74,6 +83,19 @@ const Admindashboard = ({ }) => {
       { value: "syd", label: "Syd" },
       { value: "qld", label: "Qld" },
     ];
+
+
+    const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const showModal = () => {
+    setIsModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setIsModalVisible(false);
+  };
+
+
     // Handle category change function
     const handleCategoryChange = (event) => {
       setSelectedCategory(event.target.value);
@@ -578,8 +600,14 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
         <div className="main-store">
           <div className="search-bar-container">
           <div>
+          <Button type="primary" style={{marginLeft:"200px", marginBottom:"30px"}} onClick={showModal}>
+        Show Log Data
+      </Button>
           <button className="add-store-button" onClick={openModalWithNewAppId}>Add Store</button>
 
+     
+      <LogDataModal isVisible={isModalVisible} onClose={closeModal} />
+ 
       {isAddStoreModalOpen && (
         <div className="modal-overlay">
           <div className="modal">
@@ -641,28 +669,52 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                 onChange={(date) => setQROrderData({ ...qrOrderData, expireDate: date })}
               />
             </label>
-            
-            {/* set up stripe code*/}
-            <label>
-              Stripe Key: <input type="text"  onChange={(e) => setQROrderData({ ...qrOrderData, StripePrivateKey: e.target.value })} />
+            <div className="custom-checkbox-container">
+            <label className="custom-checkbox-label">
+                <input
+                    type="checkbox"
+                    checked={isPayFirst}
+                    onChange={handleCheckboxChange}
+                    className="custom-checkbox-input"
+                />
+                <span className="custom-checkbox-box"></span>
+                Pay First
             </label>
-            <label>
-              Stripe Webhook Key: <input type="text"  onChange={(e) => setQROrderData({ ...qrOrderData, StripeWebhookKey: e.target.value })} />
-            </label>
-
+        </div>
+            {isPayFirst ? (
+            <>
+              <label>
+                Stripe Key: <input type="text" onChange={(e) => setQROrderData({ ...qrOrderData, StripePrivateKey: e.target.value })} />
+              </label>
+              <label>
+                Stripe Webhook Key: <input type="text" onChange={(e) => setQROrderData({ ...qrOrderData, StripeWebhookKey: e.target.value })} />
+              </label>
+            </>
+          ) : (
+            <>
+              <label>
+                Store Latitude:
+                <input type="number" onChange={(e) => setQROrderData({ ...qrOrderData, StoreLatitude: e.target.value })} />
+              </label>
+              <label>
+                Store Longitude:
+                <input type="number" onChange={(e) => setQROrderData({ ...qrOrderData, StoreLongitude: e.target.value })} />
+              </label>
+            </>
+          )}
             <label>
               Store Url:
               <input type="text"  onChange={(e) => setQROrderData({ ...qrOrderData, StoreUrl: e.target.value })} />
             </label>
             {/* 经纬度*/}
-            <label>
+            {/* <label>
               Store Latitude:
               <input type="number"  onChange={(e) => setQROrderData({ ...qrOrderData, StoreLatitude: e.target.value })} />
             </label>
             <label>
               Store Longitude:
               <input type="number"  onChange={(e) => setQROrderData({ ...qrOrderData, StoreLongitude: e.target.value })} />
-            </label>
+            </label> */}
 
 
             
@@ -914,7 +966,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                     {
                       item.StoreOnlineOrderAppId && item.StoreOnlineOrderAppId !== "" && (
                         <>
-                          <div className="OnlineOrderAppid">
+                          <div className="appid">
                             <p style={{
                                 userSelect: item.StoreSid === null ? "text" : "None"
                             }}>QR Order App ID: {item.StoreOnlineOrderAppId}</p>
@@ -988,7 +1040,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                     </>
                   )}
                 </p>
-                {
+                {/* {
                       item.AppId && item.AppId !== "" &&(
                   <div className="customer-list">
                   <h3>Online Report Customers:</h3>
@@ -1001,7 +1053,7 @@ else if (!getIsLoading() && getIsAdmin() && getDashboard_data()) {
                       )) : <p>No customers linked.</p>
                   }
                   </div>
-                  )}
+                  )} */}
                 
               </div>
             

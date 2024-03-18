@@ -438,13 +438,13 @@ main table td:first-child {
     font-size: 1vw;
     font-weight: bold;
 }
-table tbody tr:first-child td:first-child:not(.ant-picker-cell),
-table tbody tr:nth-child(2) td:first-child:not(.ant-picker-cell) {
+table:not(.table-style) tbody tr:first-child td:first-child:not(.ant-picker-cell),
+table:not(.table-style) tbody tr:nth-child(2) td:first-child:not(.ant-picker-cell) {
   color: rgba(236, 157, 39, 0.818); 
 }
 
-table tbody tr:nth-child(3) td:first-child:not(.ant-picker-cell),
-table tbody tr:nth-child(4) td:first-child:not(.ant-picker-cell) {
+table:not(.table-style) tbody tr:nth-child(3) td:first-child:not(.ant-picker-cell),
+table:not(.table-style) tbody tr:nth-child(4) td:first-child:not(.ant-picker-cell) {
   color: var(--color-danger);
 }
 

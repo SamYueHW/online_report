@@ -1,3 +1,119 @@
+.table-style {
+  width: 100%;
+  border-collapse: collapse; /* 移除表格和单元格之间的间距 */
+}
+
+.table-style th, .table-style td {
+  padding: 8px 16px; /* 设置单元格内的填充，调整为所需的行距和列距 */
+  text-align: right; /* 文本对齐方式 */
+}
+
+// .table-style tr:nth-child(1) {
+//   background-color: #f2f2f2; /* 第一行的背景色 */
+ 
+// }
+
+.table-style tr:nth-child(2) {
+  margin-bottom: 20px; /* 第一行和第二行之间增加间距，但这可能不直接适用于tr元素，可能需要使用不同的方法来实现更大的间距 */
+}
+
+.table-style th {
+  // background-color: #4CAF50; /* 标题背景色 */
+  // color: white;
+  text-align: right;
+  color: #677483!important;
+  font-size: 16px;
+}
+.table-style tr:first-child th:first-child
+ {
+  background-color: transparent; /* 或者设置为你的表格默认背景色 */
+  color: inherit; /* 继承父元素的文字色 */
+}
+
+.table-style td:first-child {
+  // background-color: #f2f2f2; /* 第一列的背景色 */
+  color: #677483!important;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.table-container1 {
+  width: 100%; /* 容器宽度为100% */
+  overflow-x: auto; /* 当内容超出容器宽度时，提供水平滚动条 */
+  -webkit-overflow-scrolling: touch; /* 在iOS上启用平滑滚动 */
+}.table-container1 {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-style .date-range-header {
+  text-align: right;
+}
+
+.table-style .date-range-header span {
+  display: inline; /* 默认为内联，不强制换行 */
+}
+
+/* 当屏幕小于或等于935px时 */
+@media screen and (max-width: 935px) {
+  .table-style .date-range-header {
+    text-align: center;
+  }
+  .table-style .date-range-header span {
+    display: block; /* 在小屏幕上每个span独占一行 */
+  }
+  .table-style td.first-column1 {
+    padding-right: 3px; /* 减少右侧填充来缩小第一列和第二列之间的间距 */
+    text-align: left; /* 如果需要，可以设置文本左对齐 */
+    font-size: 12px;
+  }
+  
+}
+
+
+/* 在小屏幕上调整表格样式 */
+@media screen and (max-width: 935px) {
+  .table-style {
+    width: auto; /* 表格宽度自动调整 */
+    // min-width: 600px; /* 表格的最小宽度，根据实际内容调整 */
+    border-collapse: collapse;
+  }
+  .card {
+    overflow-x: hidden; /* 避免卡片因滚动条而变宽 */
+  }
+
+  
+}
+
+/* 设置 main-content 为 Flex 容器 */
+.main-content {
+  display: flex;
+  flex-wrap: wrap; /* 允许子项目在必要时换行 */
+  gap: 20px; /* 根据需要设置适当的间隙 */
+}
+
+/* 设置左右列的基础样式，这里假设在大屏幕上两列各占一半宽度 */
+.left-column, .right-column1 {
+  flex: 2; /* 左列多一点 */
+  min-width: 300px; /* 设置最小宽度以避免内容过于拥挤 */
+}
+
+/* 使用媒体查询根据屏幕大小调整布局 */
+@media (max-width: 1320px) {
+  .left-column, .right-column1 {
+    flex-basis: 100%; /* 在小屏幕上让两列各占满整行 */
+  }
+  .right-column1 {
+    margin-bottom: 50px; /* 在小屏幕上增加一些顶部间距 */
+  }
+
+
+}
+
+
+
 /* 针对具有 'sales-summary-table' 类的表格，清除特定行和单元格的颜色 */
 .sales-summary-table tbody tr:first-child td:first-child,
 .sales-summary-table tbody tr:nth-child(2) td:first-child {
@@ -10,6 +126,83 @@
     color: rgba(236, 157, 39, 0.818);
     font-size: 18px;
   }
+
+
+.btn-group {
+  display: flex;
+  align-items: center; /* 垂直居中 */
+  gap: 10px; /* 按钮之间的间隔 */
+}
+
+.report-date,
+.ripple {
+  padding: 10px;
+  vertical-align: middle; /* 垂直居中对齐 */
+ 
+}
+
+.material-icons-sharp {
+  margin-left: 5px; /* 为了在图标和文字之间添加一定的间隔 */
+}
+
+.card {
+  margin-top: 1.4rem;
+  background: var(--color-white);
+  width: 600px;
+  border-radius: var(--card-border-radis);
+  padding: var(--card-padding);
+  text-align: center;
+  box-shadow: var(--box-shadow);
+  transition: all 0.3s ease;
+  flex-direction: column;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 10px;
+  flex-wrap: wrap; /* 允许子项在必要时换行 */
+  justify-content: space-between;
+}
+
+.card-title {
+  white-space: nowrap;
+  font-size: 20px;
+  font-weight: bold;
+}
+.chartType {
+  margin-right: 3px; /* 确保它距离最右侧 3px */
+}
+
+.card-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 10px; /* 调整为适当的间距 */
+}
+.card-switch{
+  margin-left: auto;
+}
+
+.amount {
+  font-size: 24px;
+ 
+  white-space: nowrap;
+}
+
+.amount-text {
+  font-size: 14px;
+  gap: 10px;
+}
+
+.card-chart img {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 12px;
+  //centre
+  margin-left: auto;
+}
+
 @media screen and (max-width:935px) {
   .date_compare{
     width: 143px;
@@ -17,4 +210,52 @@
     margin-left: -10px
   }
   
+}
+@media screen and (max-width: 720px) {
+  .left-column{
+    margin-left: 0px !important;
+  }
+  .h{
+    margin-left: 20px !important;
+  }
+  .btn-group {
+    flex-direction: column;
+    align-items: flex-start; /* Align items to the start (left) */
+    margin-left: 20px;
+  }
+
+  .dropdown,
+  .report-date,
+  .ripple {
+    width: auto; /* Allow each button to shrink to fit its content */
+    margin-bottom: 10px; /* Add some margin to separate the buttons */
+    margin-top: 0;
+    
+  }
+
+  /* Adjust the left margin for icons if necessary */
+  .material-icons-sharp {
+    margin-left: 0;
+  }
+
+  .card {
+    margin-top: 1.4rem;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: calc(100% - 20px); /* Take full width minus some margin */
+    box-sizing: border-box;  
+  }
+ 
+  .amount-description {
+    flex-wrap: wrap; /* Allow items to wrap onto the next line */
+    white-space: normal; /* Allow text to wrap as needed */
+  }
+
+  .compared-sales {
+    // flex-basis: 100%; /* Force the span onto a new line */
+    white-space: nowrap; /* Keep this text from wrapping */
+  }
+  .card-switch{
+    margin-left: 0px;
+  }
 }
